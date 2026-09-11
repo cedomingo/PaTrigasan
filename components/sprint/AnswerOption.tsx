@@ -56,16 +56,7 @@ export default function AnswerOption({
     >
       <span className="font-sans text-xs font-semibold text-text-muted">{label}</span>
       <MathText latex={latex} />
-      {status === "correct" && (
-        <span aria-hidden="true" className="ml-auto text-sm font-semibold text-correct">
-          ✓
-        </span>
-      )}
-      {status === "wrong" && (
-        <span aria-hidden="true" className="ml-auto text-sm font-semibold text-wrong">
-          ✗
-        </span>
-      )}
+
     </button>
   );
 }

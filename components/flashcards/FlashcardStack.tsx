@@ -37,7 +37,7 @@ export default function FlashcardStack({ cards, flipped, onAdvance, onFlip }: Fl
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="relative h-[280px] w-full">
+      <div className="relative h-full w-full">
         <AnimatePresence initial={false}>
           {cards.map((card, position) => (
             <StackedCard

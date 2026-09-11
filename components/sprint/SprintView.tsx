@@ -45,6 +45,7 @@ interface SprintViewProps {
   name: string;
   onNameChange: (name: string) => void;
   onExit: () => void;
+  onGameEnd?: () => void;
   handoff?: SprintHandoff;
 }
 
@@ -66,6 +67,7 @@ export default function SprintView({
   name,
   onNameChange,
   onExit,
+  onGameEnd,
   handoff,
 }: SprintViewProps) {
   const categoryLabels = useMemo(
@@ -152,6 +154,7 @@ export default function SprintView({
     endedRef.current = true;
     clearTimers();
     setPhase("ended");
+    onGameEnd?.();
   }
 
   function nextQuestion() {
@@ -268,18 +271,9 @@ export default function SprintView({
   }
 
   return (
-    <main className="min-h-screen px-6 py-12 sm:py-20 animate-view-enter">
-      <div className="mx-auto max-w-2xl">
+    <div className="min-h-[36rem]">
         {phase === "playing" && question && (
-          <Card className="p-8 sm:p-10">
-            <button
-              type="button"
-              onClick={onExit}
-              className="-ml-2 -mt-2 mb-4 p-2 font-sans text-xs text-text-muted transition-colors hover:text-navy"
-            >
-              ‹ Exit sprint
-            </button>
-
+          <Card className="h-full p-8 sm:p-10">
             <SprintHUD score={score} secondsLeft={secondsLeft} qPercent={qPercent} />
 
             <div className="mt-8">
@@ -308,18 +302,27 @@ export default function SprintView({
             </div>
 
             <Divider className="mt-8" />
-            <p
-              role="status"
-              aria-live="polite"
-              className="mt-3 min-h-[1.25rem] font-sans text-xs text-text-muted"
-            >
-              {statusMessage}
-            </p>
+            <div className="mt-3 flex min-h-[1.25rem] items-center justify-between">
+              <p
+                role="status"
+                aria-live="polite"
+                className="font-sans text-xs text-text-muted"
+              >
+                {statusMessage}
+              </p>
+              <button
+                type="button"
+                onClick={onExit}
+                className="shrink-0 py-0 px-2 font-sans text-xs text-text-muted transition-colors hover:text-navy"
+              >
+                ≪ Exit sprint
+              </button>
+            </div>
           </Card>
         )}
 
         {phase === "ended" && (
-          <Card className="p-8 sm:p-10">
+          <Card className="h-full p-8 sm:p-10">
             <SprintResults
               score={score}
               correctCount={correctCount}
@@ -333,7 +336,6 @@ export default function SprintView({
             />
           </Card>
         )}
-      </div>
-    </main>
+    </div>
   );
 }

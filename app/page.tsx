@@ -1,36 +1,38 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { getAllSubjects } from "@/data";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getAllSubjects, getAllCategories } from "@/data";
 import { getPlayerName, setPlayerName } from "@/lib/cookies";
-import { Card } from "@/components/ui";
+import { getFlashcardItems, shuffle, type SprintHandoff } from "@/lib/quiz-engine";
+import { Button, Card, Divider, SectionLabel } from "@/components/ui";
 import IntroOverlay from "@/components/landing/IntroOverlay";
 import LeaderboardSection from "@/components/leaderboard/LeaderboardSection";
-import CategoryDropdown from "@/components/category/CategoryDropdown";
 import NameInput from "@/components/landing/NameInput";
-import ModeButtons from "@/components/landing/ModeButtons";
+import ModeTabBar, { type ModeTab } from "@/components/landing/ModeTabBar";
 import SprintPreview from "@/components/sprint/SprintPreview";
 import SprintView from "@/components/sprint/SprintView";
-import FlashcardView from "@/components/flashcards/FlashcardView";
-import type { SprintHandoff } from "@/lib/quiz-engine";
+import FlashcardStack from "@/components/flashcards/FlashcardStack";
 
 const subjects = getAllSubjects();
 
-type View = "landing" | "sprint" | "flashcards";
+/** Trigonometric derivatives — checked by default, matching the target screenshot. */
+const DEFAULT_CATEGORY_ID = "derivatives-trig";
+
+const VISIBLE_DEPTH = 3;
 
 export default function Home() {
-  const [view, setView] = useState<View>("landing");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set([DEFAULT_CATEGORY_ID])
+  );
+  const [activeTab, setActiveTab] = useState<ModeTab>("sprint");
   const [name, setName] = useState("");
   const [introComplete, setIntroComplete] = useState(false);
-  const [handoff, setHandoff] = useState<SprintHandoff | null>(null);
+  const [sprintHandoff, setSprintHandoff] = useState<SprintHandoff | null>(null);
+  const [sprintLive, setSprintLive] = useState(false);
 
   const handleIntroComplete = useCallback(() => setIntroComplete(true), []);
 
-  // Cookie read only happens client-side, after mount — SSR has no
-  // access to it, so this can't be moved into render.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setName(getPlayerName());
   }, []);
 
@@ -51,91 +53,197 @@ export default function Home() {
     setPlayerName(value);
   }
 
-  // Answer-to-start: the landing preview's correct answer carries its
-  // already-shuffled queue + pre-awarded points straight into the timed
-  // run. Exiting the run clears the handoff so the landing preview starts
-  // fresh next time.
-  function handleSprintHandoff(next: SprintHandoff) {
-    setHandoff(next);
-    setView("sprint");
+  function handleTabSelect(tab: ModeTab) {
+    setActiveTab(tab);
+    if (tab !== "sprint") {
+      setSprintHandoff(null);
+      setSprintLive(false);
+    }
+  }
+
+  function handleSprintHandoff(handoff: SprintHandoff) {
+    setSprintHandoff(handoff);
+    setSprintLive(true);
   }
 
   function handleSprintExit() {
-    setHandoff(null);
-    setView("landing");
+    setActiveTab("sprint");
+    setSprintHandoff(null);
+    setSprintLive(false);
   }
 
-  // Stable identity for the current selection, used to remount the
-  // preview (and so regenerate its first question) whenever the category
-  // selection changes.
+  function handleSprintGameEnd() {
+    setSprintLive(false);
+  }
+
   const selectionKey = Array.from(selectedIds).sort().join(",");
 
-  if (view === "sprint") {
-    return (
-      <SprintView
-        categoryIds={Array.from(selectedIds)}
-        name={name}
-        onNameChange={handleNameChange}
-        onExit={handleSprintExit}
-        handoff={handoff ?? undefined}
-      />
+  // Flashcards state (inline)
+  const categoryLabels = useMemo(
+    () => new Map(getAllCategories().map((c) => [c.id, c.label])),
+    []
+  );
+  const [deck] = useState(() => getFlashcardItems(Array.from(selectedIds)));
+  const [order, setOrder] = useState(() => shuffle(deck.map((_, i) => i)));
+  const [flipped, setFlipped] = useState(false);
+  const [cycleIndex, setCycleIndex] = useState(0);
+
+  const total = order.length;
+  const position = total > 0 ? ((cycleIndex % total) + total) % total : 0;
+
+  const visibleCards = useMemo(() => {
+    return order.slice(0, VISIBLE_DEPTH).map((deckIndex) => {
+      const { categoryId, item } = deck[deckIndex];
+      return {
+        id: deckIndex,
+        categoryLabel: categoryLabels.get(categoryId) ?? "",
+        prompt: item.fn,
+        answer: item.ans,
+      };
+    });
+  }, [order, deck, categoryLabels]);
+
+  function advance(dir: "next" | "previous") {
+    if (total === 0) return;
+    setFlipped(false);
+    setOrder((prev) =>
+      dir === "next"
+        ? [...prev.slice(1), prev[0]]
+        : [prev[prev.length - 1], ...prev.slice(0, -1)]
     );
+    setCycleIndex((c) => (dir === "next" ? c + 1 : c - 1));
   }
 
-  if (view === "flashcards") {
-    return (
-      <FlashcardView
-        categoryIds={Array.from(selectedIds)}
-        onExit={() => setView("landing")}
-      />
-    );
+  function handleShuffle() {
+    if (total === 0) return;
+    setFlipped(false);
+    setOrder((prev) => shuffle(prev));
+    setCycleIndex(0);
   }
+
+  // Update deck/order when selection changes
+  useEffect(() => {
+    const newDeck = getFlashcardItems(Array.from(selectedIds));
+    const newOrder = shuffle(newDeck.map((_, i) => i));
+    setOrder(newOrder);
+    setCycleIndex(0);
+    setFlipped(false);
+  }, [selectionKey]);
+
+  /** Shared classes to hide surrounding UI during a live sprint without
+   *  removing it from the DOM (keeps layout stable). */
+  const liveSprintHidden = sprintLive
+    ? "pointer-events-none opacity-0"
+    : "opacity-100";
 
   return (
     <main className="pb-24 animate-view-enter">
       {!introComplete && <IntroOverlay onComplete={handleIntroComplete} />}
 
-      <section className="mx-auto max-w-2xl px-6 pt-12 sm:pt-16">
-        <Card variant="default" className="p-8 sm:p-10">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <CategoryDropdown
-              subjects={subjects}
-              selectedIds={selectedIds}
-              onToggle={handleToggleCategory}
-              className="sm:w-56 sm:shrink-0"
-            />
-            <ModeButtons
-              disabled={selectedIds.size === 0}
-              onStartFlashcards={() => setView("flashcards")}
-            />
-          </div>
-
-          <div className="mt-6 space-y-6">
-            {selectedIds.size === 0 && (
-              <p id="category-hint" className="font-sans text-xs text-text-muted">
-                Select at least one topic to practice — or to preview the sprint below.
-              </p>
-            )}
-            <NameInput name={name} onChange={handleNameChange} />
-          </div>
-        </Card>
+      {/* Tab bar + dropdown overlay — hidden during live sprint but kept in layout */}
+      <section
+        className={`mx-auto max-w-2xl px-6 pt-12 sm:pt-16 transition-opacity duration-200 ${liveSprintHidden}`}
+        inert={sprintLive}
+      >
+        <ModeTabBar
+          active={activeTab}
+          onSelect={handleTabSelect}
+          subjects={subjects}
+          selectedIds={selectedIds}
+          onToggleCategory={handleToggleCategory}
+        />
       </section>
 
-      {selectedIds.size > 0 && (
+      {/* Sprint game — frozen preview first, live game after correct answer */}
+      {activeTab === "sprint" && selectedIds.size > 0 && (
         <section className="mx-auto mt-5 max-w-2xl px-6">
-          {/* key remounts on selection change, regenerating the preview's
-              first question from the newly selected categories. */}
-          <SprintPreview
-            key={selectionKey}
-            categoryIds={Array.from(selectedIds)}
-            onHandoff={handleSprintHandoff}
-          />
+          {sprintHandoff === null ? (
+            <SprintPreview
+              key={selectionKey}
+              categoryIds={Array.from(selectedIds)}
+              onHandoff={handleSprintHandoff}
+            />
+          ) : (
+            <SprintView
+              key={`sprint-run-${selectionKey}`}
+              categoryIds={Array.from(selectedIds)}
+              name={name}
+              onNameChange={handleNameChange}
+              onExit={handleSprintExit}
+              onGameEnd={handleSprintGameEnd}
+              handoff={sprintHandoff}
+            />
+          )}
         </section>
       )}
 
+      {/* Practice flashcards — same card wrapper as sprint for visual consistency */}
+      {activeTab === "practice" && selectedIds.size > 0 && (
+        <section className="mx-auto mt-5 max-w-2xl px-6">
+          <Card className="min-h-[36rem] p-8 sm:p-10 flex flex-col">
+            {total > 0 ? (
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <SectionLabel tone="muted">Practice</SectionLabel>
+                  <span className="font-sans text-xs text-text-muted">
+                    Card {position + 1} of {total}
+                  </span>
+                </div>
+
+                <div className="flex-1">
+                  <FlashcardStack
+                    cards={visibleCards}
+                    flipped={flipped}
+                    onAdvance={advance}
+                    onFlip={() => setFlipped((f) => !f)}
+                  />
+                </div>
+
+                <Divider className="my-8" />
+
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <Button variant="secondary" onClick={() => advance("previous")}>
+                    Previous
+                  </Button>
+                  <Button variant="secondary" onClick={() => setFlipped((f) => !f)}>
+                    Flip
+                  </Button>
+                  <Button variant="secondary" onClick={handleShuffle}>
+                    Shuffle
+                  </Button>
+                  <Button variant="primary" onClick={() => advance("next")}>
+                    Next
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <p className="py-16 text-center font-sans text-sm text-text-muted">
+                No cards match the selected topics.
+              </p>
+            )}
+          </Card>
+        </section>
+      )}
+
+      {/* Name input — below the game, hidden during live sprint but kept in layout */}
+      <section
+        className={`mx-auto max-w-2xl px-6 transition-opacity duration-200 ${liveSprintHidden}`}
+        inert={sprintLive}
+      >
+        <div className="mt-6">
+          <NameInput name={name} onChange={handleNameChange} />
+        </div>
+      </section>
+
       <div className="mt-5" />
 
-      <LeaderboardSection />
+      {/* Leaderboard — hidden during live sprint but kept in layout */}
+      <div
+        className={`transition-opacity duration-200 ${liveSprintHidden}`}
+        inert={sprintLive}
+      >
+        <LeaderboardSection />
+      </div>
     </main>
   );
 }

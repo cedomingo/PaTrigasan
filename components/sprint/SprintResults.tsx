@@ -59,7 +59,7 @@ export default function SprintResults({
   }
 
   return (
-    <div className="text-center">
+    <div className="flex min-h-[32rem] flex-col items-center justify-center text-center">
       <SectionLabel tone="muted">Time&apos;s up</SectionLabel>
 
       <p className="mt-4 font-sans text-sm text-text-muted">Final score</p>

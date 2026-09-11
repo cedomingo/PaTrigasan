@@ -100,13 +100,10 @@ export default function SprintPreview({
 
     if (isCorrect) {
       // Full points for the first-question answer, streak starting at 0 —
-      // the same curve the run uses. The run itself starts at the handoff,
-      // when SprintView mounts and starts its timers.
-      setStatusMessage("Correct — sprint starting.");
+      // the same curve the run uses. Hand off immediately so SprintView
+      // starts the timers without any delay.
       const handoff = buildSprintHandoff(initial.queue, 0, 0);
-      revealTimeoutRef.current = setTimeout(() => {
-        onHandoff(handoff);
-      }, REVEAL_MS);
+      onHandoff(handoff);
     } else {
       // Inline feedback only: mark the pick wrong, keep the correct answer
       // unrevealed, then let them retry the same question.
@@ -160,7 +157,7 @@ export default function SprintPreview({
   if (!question) return null;
 
   return (
-    <Card className="p-8 sm:p-10">
+    <Card className="min-h-[36rem] p-8 sm:p-10">
       <SprintHUD score={PREVIEW_SCORE} secondsLeft={PREVIEW_SECONDS} qPercent={100} />
 
       <div className="mt-8">
@@ -189,13 +186,15 @@ export default function SprintPreview({
       </div>
 
       <Divider className="mt-8" />
-      <p
-        role="status"
-        aria-live="polite"
-        className="mt-3 min-h-[1.25rem] font-sans text-xs text-text-muted"
-      >
-        {statusMessage}
-      </p>
+      <div className="mt-3 flex min-h-[1.25rem] items-center justify-between">
+        <p
+          role="status"
+          aria-live="polite"
+          className="font-sans text-xs text-text-muted"
+        >
+          {statusMessage}
+        </p>
+      </div>
     </Card>
   );
 }
