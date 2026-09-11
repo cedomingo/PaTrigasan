@@ -10,7 +10,7 @@ interface ModeButtonsProps {
 
 /**
  * "Start Sprint" and "Start Flashcards" trigger their respective full-screen
- * view-state swaps (Phase 4 and Phase 5).
+ * view-state swaps.
  */
 export default function ModeButtons({
   disabled,

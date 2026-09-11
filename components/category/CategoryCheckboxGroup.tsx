@@ -6,7 +6,7 @@ interface CategoryCheckboxGroupProps {
   subjects: Subject[];
   selectedIds: Set<string>;
   onToggle: (categoryId: string) => void;
-  /** Compact mode drops the subject group headings — used for the leaderboard's inline filter (Phase 3). */
+  /** Compact mode drops the subject group headings — used for the leaderboard's inline filter. */
   compact?: boolean;
 }
 
@@ -17,7 +17,7 @@ interface CategoryCheckboxGroupProps {
  * subjects or categories exist.
  *
  * Kept generic/controlled (ids + callback in, no internal state) so it can
- * be reused verbatim for the leaderboard's "By Topic" filter in Phase 3,
+ * be reused verbatim for the leaderboard's "By Topic" filter,
  * per the roadmap's instruction to reuse the same checkbox component.
  */
 export default function CategoryCheckboxGroup({

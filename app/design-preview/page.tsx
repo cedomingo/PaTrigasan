@@ -33,7 +33,7 @@ export default function DesignPreviewPage() {
         <SectionLabel underline>Design preview</SectionLabel>
         <h1 className="font-serif mt-3 text-4xl">Math Sprint — Style Guide</h1>
         <p className="mt-3 max-w-lg font-sans text-sm leading-6 text-text-muted">
-          Design tokens and base components from Phase 1, for visual QA
+          Design tokens and base components, for visual QA
           before real screens get built on top. This page can be removed or
           kept as a living reference.
         </p>

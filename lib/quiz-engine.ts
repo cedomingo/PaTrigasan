@@ -10,7 +10,7 @@ import { getAllQuestionBanks } from "@/data";
  * it's given.
  *
  * Full game-loop wiring (60s run timer, 5s per-question countdown, score/
- * streak state, end-of-run screen) is built in Phase 4 on top of these
+ * streak state, end-of-run screen) lives in SprintView on top of these
  * primitives.
  */
 

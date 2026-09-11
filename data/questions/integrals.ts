@@ -1,11 +1,10 @@
 import type { Category, CategoryQuestionBank } from "@/types";
 
 /**
- * "Integrals" subject — the Phase 6 extensibility test. This file is a
- * pure data addition, copied from derivatives.ts's shape: two categories,
- * a handful of items each. Nothing outside /data was touched to make this
- * appear in the category selector, Sprint, Flashcards, and leaderboard
- * filtering — that's the point of the test.
+ * "Integrals" subject — a pure data addition, copied from derivatives.ts's
+ * shape: two categories, a handful of items each. Nothing outside /data was
+ * touched to make this appear in the category selector, Sprint, Flashcards,
+ * and leaderboard filtering — that's the point of the extensibility design.
  *
  * This is a stub/demo, not a real content pass (only a few basic rules are
  * covered). Keep it as a working example of "add a subject == add a data

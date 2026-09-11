@@ -10,7 +10,7 @@
  *      equals the sorted list the player filtered by (using the same
  *      checkbox UI as category selection).
  *
- * See /lib/leaderboard.ts (Phase 3) for the query helpers that use this.
+ * See /lib/leaderboard.ts for the query helpers that use this.
  */
 export interface ScoreEntry {
   /** Firestore document id, present once read back from the DB. */

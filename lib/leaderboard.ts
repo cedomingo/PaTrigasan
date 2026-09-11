@@ -30,11 +30,8 @@ export function getFullMixCategoryIds(): string[] {
 }
 
 /**
- * Writes one completed run to Firestore. This is the hook point Phase 4's
- * Sprint results screen calls after a run ends — Sprint itself doesn't
- * exist yet, so nothing calls this in the app today (see
- * `scripts/seed-sample-scores.ts` for a way to populate test data and QA
- * this UI in the meantime).
+ * Writes one completed run to Firestore. Called by SprintView's
+ * SprintResults component after a run ends.
  */
 export async function writeScore(entry: NewScoreEntry): Promise<void> {
   await addDoc(collection(db, SCORES_COLLECTION), {

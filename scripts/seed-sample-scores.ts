@@ -3,8 +3,7 @@
  *
  * Writes a handful of realistic-looking ScoreEntry documents so you can
  * see the leaderboard actually populated — both the "Full Mix" and
- * "By Topic" views — before Phase 4 builds the real Sprint that writes
- * these for real. Safe to run multiple times; every run just adds more
+ * "By Topic" views. Safe to run multiple times; every run just adds more
  * rows. Delete them from the Firebase console when you're done, or wipe
  * the whole `scores` collection.
  */
