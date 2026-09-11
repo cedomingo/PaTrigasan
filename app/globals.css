@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+/* ==========================================================================
+   Design tokens — Math Sprint
+   Source: look-and-feel.md. Implemented as CSS custom properties, then
+   mapped into Tailwind's @theme so both var(--color-navy) and Tailwind
+   utilities like bg-navy / text-muted / rounded-card work.
+   ========================================================================== */
+
+:root {
+  /* Color */
+  --color-navy: #1e3a5f;
+  --color-navy-dark: #162b46;
+  --color-blue-medium: #315d8f;
+  --color-blue-soft: #dce8f5;
+  --color-blue-faint: #eef4fa;
+  --color-bg: #f8fafc;
+  --color-white: #ffffff;
+  --color-text: #1f2937;
+  --color-text-muted: #64748b;
+  --color-border: #d7e0ea;
+  --color-correct: #23744a;
+  --color-wrong: #b3453f;
+
+  /* Type */
+  --font-serif: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-sans: "Inter", -apple-system, "Segoe UI", sans-serif;
+
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Shadows — always subtle, never heavy */
+  --shadow-card: 0 1px 2px rgba(30, 58, 95, 0.04), 0 2px 8px rgba(30, 58, 95, 0.05);
+  --shadow-card-hover: 0 2px 4px rgba(30, 58, 95, 0.06), 0 6px 16px rgba(30, 58, 95, 0.08);
+}
+
+@theme inline {
+  --color-navy: var(--color-navy);
+  --color-navy-dark: var(--color-navy-dark);
+  --color-blue-medium: var(--color-blue-medium);
+  --color-blue-soft: var(--color-blue-soft);
+  --color-blue-faint: var(--color-blue-faint);
+  --color-bg: var(--color-bg);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text);
+  --color-white: var(--color-white);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-border: var(--color-border);
+  --color-correct: var(--color-correct);
+  --color-wrong: var(--color-wrong);
+
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+}
+
+html,
+body {
+  height: 100%;
+  scrollbar-width: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+.font-serif-display {
+  font-family: var(--font-serif);
+  color: var(--color-navy);
+  font-weight: 600;
+}
+
+/* Visible keyboard focus everywhere, per accessibility guidance (Phase 6 will audit further). */
+:focus-visible {
+  outline: 2px solid var(--color-blue-medium);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/*
+ * Subtle entrance used when swapping between the landing / Sprint /
+ * Flashcards view-states (see page.tsx, SprintView, FlashcardView). Kept
+ * deliberately understated — a small fade + rise, nothing that reads as
+ * "flashy" — and fully neutralized by the prefers-reduced-motion rule
+ * above since it's a plain CSS animation.
+ */
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-view-enter {
+  animation: view-enter 220ms ease-out both;
+}
+
+/* Flashcard flip animation */
+@keyframes card-flip-out {
+  0%   { transform: rotateY(0deg); }
+  100% { transform: rotateY(90deg); }
+}
+
+@keyframes card-flip-in {
+  0%   { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+.animate-flip-out {
+  animation: card-flip-out 200ms ease-in forwards;
+}
+
+.animate-flip-in {
+  animation: card-flip-in 200ms ease-out forwards;
+}
+
+/* Flashcard slide navigation */
+@keyframes slide-out-left {
+  0%   { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(-40px); opacity: 0; }
+}
+
+@keyframes slide-in-right {
+  0%   { transform: translateX(40px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-out-right {
+  0%   { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(40px); opacity: 0; }
+}
+
+@keyframes slide-in-left {
+  0%   { transform: translateX(-40px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-out-left {
+  animation: slide-out-left 200ms ease-in forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 200ms ease-out forwards;
+}
+
+.animate-slide-out-right {
+  animation: slide-out-right 200ms ease-in forwards;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 200ms ease-out forwards;
+}

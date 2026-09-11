@@ -1,0 +1,315 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Card, Divider, MathText, SectionLabel } from "@/components/ui";
+import { getAllCategories } from "@/data";
+import { buildQuestionQueue, type SprintQuestion } from "@/lib/quiz-engine";
+import AnswerOption, { type AnswerOptionStatus } from "./AnswerOption";
+import SprintHUD from "./SprintHUD";
+import SprintResults from "./SprintResults";
+
+/**
+ * Sprint mode — a full-screen view-state swap (no route change), ported
+ * from the original Derivative Sprint's game loop:
+ *   - 60s total run timer, ticking every 100ms.
+ *   - 5s per-question countdown, ticking every 40ms (tracked as an elapsed
+ *     tick count rather than wall-clock time, so the loop never reaches for
+ *     an impure timing API mid-component); auto-reveals as a miss if time
+ *     runs out before an answer is chosen.
+ *   - Same scoring curve: +10, plus +2 per streak point up to a +10 cap
+ *     (i.e. 10 + min(streak, 5) * 2).
+ *   - Correct answers advance immediately; wrong/missed answers pause
+ *     900ms on the reveal before advancing, exactly as in the original.
+ *   - The queue is rebuilt and appended whenever it runs out, so a run
+ *     never stalls even on a small category selection.
+ * Confetti and the neon palette are intentionally dropped — the design
+ * spec calls for "no leftover ed-tech/gamified visual artifacts."
+ */
+
+const TOTAL_MS = 60_000;
+const Q_MS = 5_000;
+const Q_TICK_MS = 40;
+const TOTAL_TICK_MS = 100;
+
+interface SprintViewProps {
+  categoryIds: string[];
+  name: string;
+  onNameChange: (name: string) => void;
+  onExit: () => void;
+}
+
+interface RevealedAnswer {
+  chosenKey: string | null;
+  correctKey: string;
+}
+
+function firstQuestionOf(categoryIds: string[]): {
+  queue: SprintQuestion[];
+  question: SprintQuestion | null;
+} {
+  const queue = buildQuestionQueue(categoryIds);
+  return { queue, question: queue[0] ?? null };
+}
+
+export default function SprintView({
+  categoryIds,
+  name,
+  onNameChange,
+  onExit,
+}: SprintViewProps) {
+  const categoryLabels = useMemo(
+    () => new Map(getAllCategories().map((c) => [c.id, c.label])),
+    []
+  );
+
+  // The queue/first-question pair is computed once, up front, via a plain
+  // (non-hook) call — used to seed both the state below and the refs that
+  // track it, so no setState call is needed inside an effect just to get
+  // the game to its starting position.
+  const initialRun = useState(() => firstQuestionOf(categoryIds))[0];
+
+  const [phase, setPhase] = useState<"playing" | "ended">("playing");
+  const [question, setQuestion] = useState<SprintQuestion | null>(initialRun.question);
+  const [answer, setAnswer] = useState<RevealedAnswer | null>(null);
+  const [score, setScore] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [qPercent, setQPercent] = useState(100);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [correctCount, setCorrectCount] = useState(0);
+  const [missedCount, setMissedCount] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+
+  // Fast-ticking game-loop bookkeeping lives in refs, not state, so the
+  // 40ms/100ms interval callbacks never fight React's batching — only the
+  // values that actually need to repaint go through useState. None of
+  // these are read during render, only from effects/handlers/timers.
+  const queueRef = useRef<SprintQuestion[]>(initialRun.queue);
+  const qIndexRef = useRef(0);
+  const qElapsedRef = useRef(0);
+  const streakRef = useRef(0);
+  const totalTimeLeftRef = useRef(TOTAL_MS);
+  const totalTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const qTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answeredRef = useRef(false);
+  const endedRef = useRef(false);
+
+  function clearTimers() {
+    if (totalTimerRef.current) clearInterval(totalTimerRef.current);
+    if (qTimerRef.current) clearInterval(qTimerRef.current);
+    if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
+  }
+
+  function startTotalTimer() {
+    totalTimerRef.current = setInterval(() => {
+      totalTimeLeftRef.current -= TOTAL_TICK_MS;
+      setSecondsLeft(Math.max(0, Math.ceil(totalTimeLeftRef.current / 1000)));
+      if (totalTimeLeftRef.current <= 0) {
+        endGame();
+      }
+    }, TOTAL_TICK_MS);
+  }
+
+  /** Starts the 5s countdown for whichever question is currently in state. */
+  function startQuestionTimer(q: SprintQuestion) {
+    qElapsedRef.current = 0;
+    if (qTimerRef.current) clearInterval(qTimerRef.current);
+    qTimerRef.current = setInterval(() => {
+      qElapsedRef.current += Q_TICK_MS;
+      const pct = Math.max(0, 100 - (qElapsedRef.current / Q_MS) * 100);
+      setQPercent(pct);
+      if (qElapsedRef.current >= Q_MS && !answeredRef.current) {
+        revealAnswer(q.correctKey, null);
+      }
+    }, Q_TICK_MS);
+  }
+
+  function endGame() {
+    if (endedRef.current) return;
+    endedRef.current = true;
+    clearTimers();
+    setPhase("ended");
+  }
+
+  function nextQuestion() {
+    qIndexRef.current += 1;
+    if (qIndexRef.current >= queueRef.current.length) {
+      queueRef.current = queueRef.current.concat(buildQuestionQueue(categoryIds));
+    }
+    const q = queueRef.current[qIndexRef.current];
+
+    answeredRef.current = false;
+    setQuestion(q);
+    setAnswer(null);
+    setStatusMessage("");
+    setQPercent(100);
+
+    startQuestionTimer(q);
+  }
+
+  function revealAnswer(correctKey: string, chosenKey: string | null) {
+    if (answeredRef.current) return;
+    answeredRef.current = true;
+    setAnswer({ chosenKey, correctKey });
+
+    const isCorrect = chosenKey === correctKey;
+
+    if (isCorrect) {
+      const gained = 10 + Math.min(streakRef.current, 5) * 2;
+      streakRef.current += 1;
+      setScore((s) => s + gained);
+      setCorrectCount((c) => c + 1);
+      setBestStreak((b) => Math.max(b, streakRef.current));
+      setStatusMessage(streakRef.current > 1 ? `Streak × ${streakRef.current}` : "Correct.");
+
+      if (totalTimeLeftRef.current > 0) {
+        nextQuestion();
+      }
+    } else {
+      streakRef.current = 0;
+      setMissedCount((m) => m + 1);
+      setStatusMessage(chosenKey ? "Not quite — keep going." : "Time's up — keep going.");
+
+      revealTimeoutRef.current = setTimeout(() => {
+        if (totalTimeLeftRef.current > 0 && !endedRef.current) {
+          nextQuestion();
+        }
+      }, 900);
+    }
+  }
+
+  function selectAnswer(chosenKey: string, correctKey: string) {
+    if (answeredRef.current) return;
+    revealAnswer(correctKey, chosenKey);
+  }
+
+  /** Full reset — used by the "Run it back" button (an event handler, not an effect). */
+  function startGame() {
+    clearTimers();
+
+    const run = firstQuestionOf(categoryIds);
+    queueRef.current = run.queue;
+    qIndexRef.current = 0;
+    streakRef.current = 0;
+    totalTimeLeftRef.current = TOTAL_MS;
+    answeredRef.current = false;
+    endedRef.current = false;
+
+    setPhase("playing");
+    setQuestion(run.question);
+    setAnswer(null);
+    setStatusMessage("");
+    setQPercent(100);
+    setScore(0);
+    setCorrectCount(0);
+    setMissedCount(0);
+    setBestStreak(0);
+    setSecondsLeft(60);
+
+    startTotalTimer();
+    if (run.question) startQuestionTimer(run.question);
+  }
+
+  // Keyboard shortcuts: A/B/C/D map to options 1–4
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (phase !== "playing" || !question || answeredRef.current) return;
+      const key = e.key.toUpperCase();
+      const index = key.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+      if (index < 0 || index >= question.options.length) return;
+      const opt = question.options[index];
+      selectAnswer(opt.key, question.correctKey);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, question]);
+
+  // Mount-only: start the two interval subscriptions for the run that was
+  // already seeded synchronously above — no setState call happens directly
+  // in this effect body, only inside the interval/timeout callbacks it sets
+  // up (which is the pattern React's docs recommend for effects).
+  useEffect(() => {
+    startTotalTimer();
+    if (initialRun.question) startQuestionTimer(initialRun.question);
+    return () => clearTimers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function optionStatus(key: string): AnswerOptionStatus {
+    if (!answer) return "default";
+    if (key === answer.correctKey) return "correct";
+    if (key === answer.chosenKey) return "wrong";
+    return "dim";
+  }
+
+  return (
+    <main className="min-h-screen px-6 py-12 sm:py-20 animate-view-enter">
+      <div className="mx-auto max-w-2xl">
+        {phase === "playing" && question && (
+          <Card className="p-8 sm:p-10">
+            <button
+              type="button"
+              onClick={onExit}
+              className="-ml-2 -mt-2 mb-4 p-2 font-sans text-xs text-text-muted transition-colors hover:text-navy"
+            >
+              ‹ Exit sprint
+            </button>
+
+            <SprintHUD score={score} secondsLeft={secondsLeft} qPercent={qPercent} />
+
+            <div className="mt-8">
+              <SectionLabel underline>
+                {categoryLabels.get(question.categoryId) ?? ""}
+              </SectionLabel>
+              <p className="mt-6 font-sans text-sm text-text-muted">
+                D<sub>x</sub> of:
+              </p>
+              <div className="mt-1">
+                <MathText latex={question.fn} display className="text-4xl" />
+              </div>
+            </div>
+
+            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {question.options.map((opt, i) => (
+                <AnswerOption
+                  key={`${opt.key}-${i}`}
+                  label={String.fromCharCode(65 + i)}
+                  latex={opt.ans}
+                  status={optionStatus(opt.key)}
+                  disabled={answer !== null}
+                  onClick={() => selectAnswer(opt.key, question.correctKey)}
+                />
+              ))}
+            </div>
+
+            <Divider className="mt-8" />
+            <p
+              role="status"
+              aria-live="polite"
+              className="mt-3 min-h-[1.25rem] font-sans text-xs text-text-muted"
+            >
+              {statusMessage}
+            </p>
+          </Card>
+        )}
+
+        {phase === "ended" && (
+          <Card className="p-8 sm:p-10">
+            <SprintResults
+              score={score}
+              correctCount={correctCount}
+              missedCount={missedCount}
+              bestStreak={bestStreak}
+              categoryIds={categoryIds}
+              name={name}
+              onNameChange={onNameChange}
+              onReplay={startGame}
+              onExit={onExit}
+            />
+          </Card>
+        )}
+      </div>
+    </main>
+  );
+}
