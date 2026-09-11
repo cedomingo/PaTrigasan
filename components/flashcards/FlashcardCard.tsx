@@ -9,22 +9,17 @@ interface FlashcardCardProps {
   prompt: string;
   answer: string;
   flipped: boolean;
-  onFlip: () => void;
 }
 
 const cardFaceClass =
-  "flex h-[280px] w-full flex-col items-center justify-center gap-1 p-10 text-center";
+  "flex h-[280px] w-full flex-col items-center px-10 pt-2 pb-2 text-center [backface-visibility:hidden]";
 
 export default function FlashcardCard({
   categoryLabel,
   prompt,
   answer,
   flipped,
-  onFlip,
 }: FlashcardCardProps) {
-  // react-card-flip animates via inline styles/transitions, so it isn't
-  // covered by the global `prefers-reduced-motion` rule in globals.css.
-  // Mirror that preference here by dropping the flip speed to 0.
   const [reducedMotion, setReducedMotion] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -47,50 +42,31 @@ export default function FlashcardCard({
       flipSpeedFrontToBack={flipSpeed}
       flipSpeedBackToFront={flipSpeed}
     >
-      {/* FRONT */}
-      <Card
-        as="button"
-        type="button"
-        variant="interactive"
-        onClick={onFlip}
-        className={cardFaceClass}
-      >
+      <Card className={cardFaceClass}>
         <SectionLabel tone="muted" underline>
           {categoryLabel}
         </SectionLabel>
 
-        <p className="mt-6 font-sans text-sm text-text-muted">
-          D<sub>x</sub> of:
-        </p>
-
-        <div className="mt-1">
+        <div className="flex flex-1 flex-col items-center justify-center gap-1">
+          <p className="font-sans text-sm text-text-muted">
+            D<sub>x</sub> of:
+          </p>
           <MathText latex={prompt} display className="text-4xl" />
         </div>
 
-        <p className="mt-8 font-sans text-xs text-text-muted">
-          Tap to reveal the derivative
-        </p>
+        <p className="font-sans text-xs text-text-muted">Tap to reveal</p>
       </Card>
 
-      {/* BACK */}
-      <Card
-        as="button"
-        type="button"
-        variant="interactive"
-        onClick={onFlip}
-        className={cardFaceClass}
-      >
+      <Card className={cardFaceClass}>
         <SectionLabel tone="navy" underline>
           Answer
         </SectionLabel>
 
-        <div className="mt-6">
+        <div className="flex flex-1 items-center justify-center">
           <MathText latex={answer} display className="text-4xl" />
         </div>
 
-        <p className="mt-8 font-sans text-xs text-text-muted">
-          Tap to flip back
-        </p>
+        <p className="font-sans text-xs text-text-muted">Tap to flip back</p>
       </Card>
     </ReactCardFlip>
   );

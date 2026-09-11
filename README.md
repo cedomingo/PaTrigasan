@@ -87,7 +87,11 @@ click it, wait ~a minute for the index to build, and reload.
 ## Features
 
 - **Sprint mode** — 60-second timed quiz, 5 seconds per question, scoring
-  with streak bonuses, keyboard shortcuts (A/B/C/D).
+  with streak bonuses, keyboard shortcuts (A/B/C/D). Answer-to-start: the
+  landing page shows the first question of the current selection live
+  (timer frozen at 60s) — a correct answer scores it and immediately
+  launches the timed run from the next question; wrong answers give inline
+  feedback and can be retried without penalty.
 - **Flashcard mode** — untimed study with 3D flip animations, slide
   transitions between cards, Previous/Next/Shuffle navigation.
 - **Leaderboard** — live Firestore-backed with Full Mix / By Topic views

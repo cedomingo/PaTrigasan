@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, Divider, MathText, SectionLabel } from "@/components/ui";
 import { getAllCategories } from "@/data";
-import { buildQuestionQueue, type SprintQuestion } from "@/lib/quiz-engine";
+import { buildQuestionQueue, type SprintHandoff, type SprintQuestion } from "@/lib/quiz-engine";
 import AnswerOption, { type AnswerOptionStatus } from "./AnswerOption";
 import SprintHUD from "./SprintHUD";
 import SprintResults from "./SprintResults";
@@ -31,11 +31,21 @@ const Q_MS = 5_000;
 const Q_TICK_MS = 40;
 const TOTAL_TICK_MS = 100;
 
+/**
+ * Optional mid-stream entry: when provided, the run skips the first
+ * question and resumes from the preview's already-shuffled queue with the
+ * preview's score/streak carried over. Used by SprintPreview — the landing
+ * page's answer-to-start first question — so the timed run continues
+ * seamlessly from what the user just answered. Only timers are (re)started
+ * here; the preview's points were awarded before the handoff and are never
+ * re-scored.
+ */
 interface SprintViewProps {
   categoryIds: string[];
   name: string;
   onNameChange: (name: string) => void;
   onExit: () => void;
+  handoff?: SprintHandoff;
 }
 
 interface RevealedAnswer {
@@ -56,6 +66,7 @@ export default function SprintView({
   name,
   onNameChange,
   onExit,
+  handoff,
 }: SprintViewProps) {
   const categoryLabels = useMemo(
     () => new Map(getAllCategories().map((c) => [c.id, c.label])),
@@ -65,28 +76,40 @@ export default function SprintView({
   // The queue/first-question pair is computed once, up front, via a plain
   // (non-hook) call — used to seed both the state below and the refs that
   // track it, so no setState call is needed inside an effect just to get
-  // the game to its starting position.
-  const initialRun = useState(() => firstQuestionOf(categoryIds))[0];
+  // the game to its starting position. With a handoff, the queue, cursor
+  // and score come from the preview instead and the first question here is
+  // the one after the preview's.
+  const initialRun = useState(() => {
+    if (handoff) {
+      return {
+        queue: handoff.queue,
+        question: handoff.queue[handoff.nextIndex] ?? null,
+      };
+    }
+    return firstQuestionOf(categoryIds);
+  })[0];
 
   const [phase, setPhase] = useState<"playing" | "ended">("playing");
   const [question, setQuestion] = useState<SprintQuestion | null>(initialRun.question);
   const [answer, setAnswer] = useState<RevealedAnswer | null>(null);
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useState(handoff?.score ?? 0);
   const [secondsLeft, setSecondsLeft] = useState(60);
   const [qPercent, setQPercent] = useState(100);
   const [statusMessage, setStatusMessage] = useState("");
   const [correctCount, setCorrectCount] = useState(0);
   const [missedCount, setMissedCount] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
+  // Best streak starts from the handoff so a preview-correct answer (streak 1)
+  // still counts on the results screen if the run ends before another hit.
+  const [bestStreak, setBestStreak] = useState(handoff?.streak ?? 0);
 
   // Fast-ticking game-loop bookkeeping lives in refs, not state, so the
   // 40ms/100ms interval callbacks never fight React's batching — only the
   // values that actually need to repaint go through useState. None of
   // these are read during render, only from effects/handlers/timers.
   const queueRef = useRef<SprintQuestion[]>(initialRun.queue);
-  const qIndexRef = useRef(0);
+  const qIndexRef = useRef(handoff?.nextIndex ?? 0);
   const qElapsedRef = useRef(0);
-  const streakRef = useRef(0);
+  const streakRef = useRef(handoff?.streak ?? 0);
   const totalTimeLeftRef = useRef(TOTAL_MS);
   const totalTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const qTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -137,6 +160,7 @@ export default function SprintView({
       queueRef.current = queueRef.current.concat(buildQuestionQueue(categoryIds));
     }
     const q = queueRef.current[qIndexRef.current];
+    if (!q) return;
 
     answeredRef.current = false;
     setQuestion(q);

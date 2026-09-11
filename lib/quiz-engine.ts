@@ -78,6 +78,38 @@ function dedupeByKey(items: QuestionItem[]): { key: string; ans: string }[] {
   return pool;
 }
 
+/**
+ * The state SprintView needs to enter a run mid-stream after a correct
+ * preview answer: the rest of the already-shuffled queue, the index it
+ * should advance to next, the pre-awarded score, and the streak the run
+ * starts with. Built from the queue that the preview was drawing from so
+ * the run continues seamlessly — no regeneration, no reshuffle.
+ */
+export interface SprintHandoff {
+  queue: SprintQuestion[];
+  nextIndex: number;
+  score: number;
+  streak: number;
+}
+
+/**
+ * Builds a SprintHandoff from the preview's queue after the user answered
+ * `answeredIndex` correctly, applying the standard scoring curve
+ * (10 + min(streak, 5) * 2) for that answer.
+ */
+export function buildSprintHandoff(
+  queue: SprintQuestion[],
+  answeredIndex: number,
+  streak: number
+): SprintHandoff {
+  return {
+    queue,
+    nextIndex: answeredIndex + 1,
+    score: 10 + Math.min(streak, 5) * 2,
+    streak: streak + 1,
+  };
+}
+
 /** All question items (unfiltered by dedup) for the given categories — used by Flashcard mode. */
 export function getFlashcardItems(
   categoryIds: string[]

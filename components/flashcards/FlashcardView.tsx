@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Divider, SectionLabel } from "@/components/ui";
 import { getAllCategories } from "@/data";
 import { getFlashcardItems, shuffle } from "@/lib/quiz-engine";
-import FlashcardCard from "./FlashcardCard";
+import FlashcardStack from "./FlashcardStack";
 
 interface FlashcardViewProps {
   categoryIds: string[];
   onExit: () => void;
 }
 
-type SlideDir = "left" | "right" | null;
+const VISIBLE_DEPTH = 3;
 
 export default function FlashcardView({ categoryIds, onExit }: FlashcardViewProps) {
   const categoryLabels = useMemo(
@@ -21,74 +21,51 @@ export default function FlashcardView({ categoryIds, onExit }: FlashcardViewProp
 
   const [deck] = useState(() => getFlashcardItems(categoryIds));
   const [order, setOrder] = useState(() => shuffle(deck.map((_, i) => i)));
-  const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [slideDir, setSlideDir] = useState<SlideDir>(null);
-  const [displayIndex, setDisplayIndex] = useState(index);
-  const slideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [cycleIndex, setCycleIndex] = useState(0);
 
   const total = order.length;
-  const current = total > 0 ? deck[order[displayIndex]] : null;
+  const position = total > 0 ? ((cycleIndex % total) + total) % total : 0;
 
-  function slideTo(nextIndex: number, dir: SlideDir) {
-    if (slideTimer.current) clearTimeout(slideTimer.current);
-    setSlideDir(dir);
+  const visibleCards = order.slice(0, VISIBLE_DEPTH).map((deckIndex) => {
+    const { categoryId, item } = deck[deckIndex];
+    return {
+      id: deckIndex,
+      categoryLabel: categoryLabels.get(categoryId) ?? "",
+      prompt: item.fn,
+      answer: item.ans,
+    };
+  });
+
+  function advance(dir: "next" | "previous") {
+    if (total === 0) return;
     setFlipped(false);
-
-    slideTimer.current = setTimeout(() => {
-      setDisplayIndex(nextIndex);
-      setIndex(nextIndex);
-      setSlideDir(null);
-    }, 200);
-  }
-
-  function handlePrevious() {
-    if (total === 0) return;
-    slideTo((index - 1 + total) % total, "right");
-  }
-
-  function handleNext() {
-    if (total === 0) return;
-    slideTo((index + 1) % total, "left");
+    setOrder((prev) =>
+      dir === "next"
+        ? [...prev.slice(1), prev[0]]
+        : [prev[prev.length - 1], ...prev.slice(0, -1)]
+    );
+    setCycleIndex((c) => (dir === "next" ? c + 1 : c - 1));
   }
 
   function handleShuffle() {
-    setOrder(shuffle(order));
-    slideTo(0, "left");
+    if (total === 0) return;
+    setFlipped(false);
+    setOrder((prev) => shuffle(prev));
+    setCycleIndex(0);
   }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-        return;
-      }
-      if (e.key === "ArrowRight") {
-        e.preventDefault();
-        handleNext();
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        handlePrevious();
-      }
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); advance("next"); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); advance("previous"); }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, total]);
-
-  const slideClass =
-    slideDir === "left"
-      ? "animate-slide-out-left"
-      : slideDir === "right"
-        ? "animate-slide-out-right"
-        : "";
-
-  const containerClass =
-    slideDir === "left"
-      ? "animate-slide-in-right"
-      : slideDir === "right"
-        ? "animate-slide-in-left"
-        : "";
+  }, [total]);
 
   return (
     <main className="min-h-screen px-6 py-12 sm:py-20 animate-view-enter">
@@ -102,42 +79,29 @@ export default function FlashcardView({ categoryIds, onExit }: FlashcardViewProp
             ‹ Exit flashcards
           </button>
 
-          {current ? (
+          {total > 0 ? (
             <>
               <div className="mb-4 flex items-center justify-between">
                 <SectionLabel tone="muted">Flashcards</SectionLabel>
                 <span className="font-sans text-xs text-text-muted">
-                  Card {index + 1} of {total}
+                  Card {position + 1} of {total}
                 </span>
               </div>
 
-              <div className={containerClass}>
-                <div className={slideClass}>
-                  <FlashcardCard
-                    categoryLabel={categoryLabels.get(current.categoryId) ?? ""}
-                    prompt={current.item.fn}
-                    answer={current.item.ans}
-                    flipped={flipped}
-                    onFlip={() => setFlipped((f) => !f)}
-                  />
-                </div>
-              </div>
+              <FlashcardStack
+                cards={visibleCards}
+                flipped={flipped}
+                onAdvance={advance}
+                onFlip={() => setFlipped((f) => !f)}
+              />
 
               <Divider className="my-8" />
 
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <Button variant="secondary" onClick={handlePrevious}>
-                  Previous
-                </Button>
-                <Button variant="secondary" onClick={() => setFlipped((f) => !f)}>
-                  {flipped ? "Flip" : "Flip"}
-                </Button>
-                <Button variant="secondary" onClick={handleShuffle}>
-                  Shuffle
-                </Button>
-                <Button variant="primary" onClick={handleNext}>
-                  Next
-                </Button>
+                <Button variant="secondary" onClick={() => advance("previous")}>Previous</Button>
+                <Button variant="secondary" onClick={() => setFlipped((f) => !f)}>Flip</Button>
+                <Button variant="secondary" onClick={handleShuffle}>Shuffle</Button>
+                <Button variant="primary" onClick={() => advance("next")}>Next</Button>
               </div>
             </>
           ) : (
