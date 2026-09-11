@@ -12,7 +12,7 @@ interface FlashcardCardProps {
 }
 
 const cardFaceClass =
-  "flex h-[280px] w-full flex-col items-center px-10 pt-2 pb-2 text-center [backface-visibility:hidden]";
+  "flex h-[360px] w-full flex-col items-center px-10 pt-2 pb-2 text-center [backface-visibility:hidden]";
 
 export default function FlashcardCard({
   categoryLabel,
@@ -62,7 +62,10 @@ export default function FlashcardCard({
           Answer
         </SectionLabel>
 
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-1">
+          <p className="font-sans text-sm text-text-muted opacity-0">
+            D<sub>x</sub> of:
+          </p>
           <MathText latex={answer} display className="text-4xl" />
         </div>
 
