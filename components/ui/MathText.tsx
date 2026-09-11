@@ -23,6 +23,7 @@ export default function MathText({ latex, display = false, className = "" }: Mat
     <span
       className={`font-serif text-navy ${className}`}
       dangerouslySetInnerHTML={{ __html: html }}
+      suppressHydrationWarning
     />
   );
 }

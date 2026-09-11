@@ -42,18 +42,22 @@ export default function CategoryCheckboxGroup({
           >
             {subject.categories.map((category) => {
               const checked = selectedIds.has(category.id);
+              const isLastSelected = checked && selectedIds.size === 1;
               return (
                 <label
                   key={category.id}
-                  className={`flex cursor-pointer items-center gap-3 rounded-md border p-4 transition-colors duration-150 ${
-                    checked
-                      ? "border-navy bg-blue-faint"
-                      : "border-border bg-white hover:bg-blue-faint hover:border-blue-medium"
+                  className={`flex items-center gap-3 rounded-md border p-4 transition-colors duration-150 ${
+                    isLastSelected
+                      ? "cursor-not-allowed border-navy bg-blue-faint opacity-50"
+                      : checked
+                        ? "cursor-pointer border-navy bg-blue-faint"
+                        : "cursor-pointer border-border bg-white hover:bg-blue-faint hover:border-blue-medium"
                   } ${compact ? "p-3" : ""}`}
                 >
                   <input
                     type="checkbox"
                     checked={checked}
+                    disabled={isLastSelected}
                     onChange={() => onToggle(category.id)}
                     className="h-4 w-4 shrink-0 accent-[var(--color-navy)]"
                   />

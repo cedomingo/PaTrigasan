@@ -42,8 +42,6 @@ const TOTAL_TICK_MS = 100;
  */
 interface SprintViewProps {
   categoryIds: string[];
-  name: string;
-  onNameChange: (name: string) => void;
   onExit: () => void;
   onGameEnd?: () => void;
   handoff?: SprintHandoff;
@@ -64,8 +62,6 @@ function firstQuestionOf(categoryIds: string[]): {
 
 export default function SprintView({
   categoryIds,
-  name,
-  onNameChange,
   onExit,
   onGameEnd,
   handoff,
@@ -242,6 +238,7 @@ export default function SprintView({
     function handleKeyDown(e: KeyboardEvent) {
       if (phase !== "playing" || !question || answeredRef.current) return;
       const key = e.key.toUpperCase();
+      if (key.startsWith("ARROW")) return;
       const index = key.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
       if (index < 0 || index >= question.options.length) return;
       const opt = question.options[index];
@@ -281,7 +278,7 @@ export default function SprintView({
                 {categoryLabels.get(question.categoryId) ?? ""}
               </SectionLabel>
               <p className="mt-6 font-sans text-sm text-text-muted">
-                D<sub>x</sub> of:
+                {question.categoryId.startsWith("integrals") ? "∫" : <>D<sub>x</sub></>} of:
               </p>
               <div className="mt-1">
                 <MathText latex={question.fn} display className="text-4xl" />
@@ -329,10 +326,7 @@ export default function SprintView({
               missedCount={missedCount}
               bestStreak={bestStreak}
               categoryIds={categoryIds}
-              name={name}
-              onNameChange={onNameChange}
-              onReplay={startGame}
-              onExit={onExit}
+              onPlayAgain={onExit}
             />
           </Card>
         )}

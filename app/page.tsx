@@ -83,7 +83,7 @@ export default function Home() {
     () => new Map(getAllCategories().map((c) => [c.id, c.label])),
     []
   );
-  const [deck] = useState(() => getFlashcardItems(Array.from(selectedIds)));
+  const [deck, setDeck] = useState(() => getFlashcardItems(Array.from(selectedIds)));
   const [order, setOrder] = useState(() => shuffle(deck.map((_, i) => i)));
   const [flipped, setFlipped] = useState(false);
   const [cycleIndex, setCycleIndex] = useState(0);
@@ -121,14 +121,67 @@ export default function Home() {
     setCycleIndex(0);
   }
 
-  // Update deck/order when selection changes
+  // Update deck+order together when selection changes
   useEffect(() => {
     const newDeck = getFlashcardItems(Array.from(selectedIds));
     const newOrder = shuffle(newDeck.map((_, i) => i));
+    setDeck(newDeck);
     setOrder(newOrder);
     setCycleIndex(0);
     setFlipped(false);
   }, [selectionKey]);
+
+  // Suppress arrow keys during sprint so they don't scroll or trigger anything
+  useEffect(() => {
+    if (activeTab !== "sprint") return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (
+        e.key === "ArrowUp" ||
+        e.key === "ArrowDown" ||
+        e.key === "ArrowLeft" ||
+        e.key === "ArrowRight"
+      ) {
+        e.preventDefault();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTab]);
+
+  // Keyboard shortcuts for practice mode: A/D or arrows for prev/next, W/S or arrows for flip
+  useEffect(() => {
+    if (activeTab !== "practice" || total === 0) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      if (key === "a" || key === "arrowleft") {
+        e.preventDefault();
+        advance("previous");
+      } else if (key === "d" || key === "arrowright") {
+        e.preventDefault();
+        advance("next");
+      } else if (key === "w" || key === "arrowup" || key === "s" || key === "arrowdown") {
+        e.preventDefault();
+        setFlipped((f) => !f);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTab, total]);
 
   /** Shared classes to hide surrounding UI during a live sprint without
    *  removing it from the DOM (keeps layout stable). */
@@ -167,8 +220,6 @@ export default function Home() {
             <SprintView
               key={`sprint-run-${selectionKey}`}
               categoryIds={Array.from(selectedIds)}
-              name={name}
-              onNameChange={handleNameChange}
               onExit={handleSprintExit}
               onGameEnd={handleSprintGameEnd}
               handoff={sprintHandoff}

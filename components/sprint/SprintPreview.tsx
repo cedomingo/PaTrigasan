@@ -131,6 +131,7 @@ export default function SprintPreview({
         return;
       }
       const key = e.key.toUpperCase();
+      if (key.startsWith("ARROW")) return;
       const index = key.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
       if (index < 0 || index >= initial.question.options.length) return;
       selectAnswer(initial.question.options[index].key);
@@ -163,10 +164,9 @@ export default function SprintPreview({
       <div className="mt-8">
         <SectionLabel underline>
           {categoryLabels.get(question.categoryId) ?? ""}
-        </SectionLabel>
-        <p className="mt-6 font-sans text-sm text-text-muted">
-          D<sub>x</sub> of:
-        </p>
+        </SectionLabel>        <p className="mt-6 font-sans text-sm text-text-muted">
+            {question.categoryId.startsWith("integrals") ? "∫" : <>D<sub>x</sub></>} of:
+          </p>
         <div className="mt-1">
           <MathText latex={question.fn} display className="text-4xl" />
         </div>
