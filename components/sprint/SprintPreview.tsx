@@ -107,8 +107,9 @@ export default function SprintPreview({
 
       // Full points for the first-question answer, streak starting at 0 —
       // the same curve the run uses. Hand off immediately so SprintView
-      // starts the timers without any delay.
-      const handoff = buildSprintHandoff(initial.queue, 0, 0);
+      // starts the timers on the *next* question (index 1), not the one
+      // the user just answered.
+      const handoff = buildSprintHandoff(initial.queue, 1, 0);
       onHandoff(handoff);
     } else {
       // Inline feedback only: mark the pick wrong, keep the correct answer
@@ -151,11 +152,8 @@ export default function SprintPreview({
     if (phase !== "revealed" || chosenKey === null || !initial.question) {
       return "default";
     }
-    if (key === chosenKey) {
-      // Only the picked option is marked; on a wrong pick the correct
-      // answer stays unrevealed so the retry isn't given away.
-      return "wrong";
-    }
+    if (key === initial.question.correctKey) return "correct";
+    if (key === chosenKey) return "wrong";
     if (chosenKey === initial.question.correctKey) return "dim";
     return "default";
   }
