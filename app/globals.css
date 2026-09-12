@@ -142,4 +142,24 @@ h3,
   animation: view-enter 220ms ease-out both;
 }
 
+/*
+ * Very slow, subtle down-left drift for the decorative BauhausGrid canvas
+ * behind the page content. The wrapper div is oversized (see -inset-16 on
+ * the component) so this translate never reveals an edge. Kept to a small
+ * travel distance and a long duration so it reads as ambient motion, not
+ * something the eye is drawn to. Neutralized by the prefers-reduced-motion
+ * rule above since it's a plain CSS animation.
+ */
+@keyframes bg-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-32px, 32px);
+  }
+}
 
+.animate-bg-drift {
+  animation: bg-drift 70s ease-in-out infinite;
+}

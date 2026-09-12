@@ -32,7 +32,7 @@ export default function IntroOverlay({ onComplete }: IntroOverlayProps) {
         }`}
       >
         <h1 className="font-serif text-4xl text-navy sm:text-5xl">
-          Math Sprint
+          PaTrigasan
         </h1>
 
         <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-blue-faint">

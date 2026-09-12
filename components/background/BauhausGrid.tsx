@@ -6,6 +6,11 @@ import { useEffect, useRef, useCallback } from "react";
 
 const CELL = 50;
 
+/** Extra px of canvas on every side, kept in sync with the wrapper's
+ * -inset-16 (64px) so the slow drift animation always has room to move
+ * without exposing a bare edge. */
+const MARGIN = 64;
+
 /** Minimum ms between moves for any given cell. */
 const COOLDOWN_MS = 1000;
 
@@ -171,6 +176,7 @@ interface BauhausGridProps {
 }
 
 export default function BauhausGrid({ className = "" }: BauhausGridProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gridRef = useRef<(Cell | null)[][]>([]);
   const movingRef = useRef<MovingTile[]>([]);
@@ -178,7 +184,10 @@ export default function BauhausGrid({ className = "" }: BauhausGridProps) {
   const rafRef = useRef<number>(0);
   const sizeRef = useRef({ cols: 0, rows: 0 });
 
-  // Mouse position in viewport coords (-1 = not on screen).
+  // Mouse position in canvas-local coords (-1 = not on screen). Measured
+  // against the wrapper's actual on-screen box, not raw clientX/Y, since
+  // the wrapper is offset by -inset-16 and continuously translated by the
+  // slow drift animation — grid cell 0,0 is not at viewport 0,0.
   const mouseRef = useRef({ x: -1, y: -1 });
 
   // Hover tracking.
@@ -219,8 +228,8 @@ export default function BauhausGrid({ className = "" }: BauhausGridProps) {
     if (!canvas) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    const w = window.innerWidth + MARGIN * 2;
+    const h = window.innerHeight + MARGIN * 2;
 
     canvas.width = w * dpr;
     canvas.height = h * dpr;
@@ -504,7 +513,12 @@ export default function BauhausGrid({ className = "" }: BauhausGridProps) {
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY };
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      if (rect) {
+        mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      } else {
+        mouseRef.current = { x: e.clientX, y: e.clientY };
+      }
     };
 
     const onMouseLeave = () => {
@@ -551,8 +565,9 @@ export default function BauhausGrid({ className = "" }: BauhausGridProps) {
 
   return (
     <div
+      ref={wrapperRef}
       aria-hidden="true"
-      className={`pointer-events-none fixed inset-0 -z-10 ${className}`}
+      className={`pointer-events-none fixed -inset-16 -z-10 animate-bg-drift ${className}`}
     >
       <canvas ref={canvasRef} className="block h-full w-full" />
     </div>

@@ -32,6 +32,8 @@ const TOTAL_MS = 60_000;
 const Q_MS = 5_000;
 const Q_TICK_MS = 40;
 const TOTAL_TICK_MS = 100;
+/** Answers landing under this land in the "fast" pitch-raising window. */
+const FAST_ANSWER_MS = 2_500;
 
 /**
  * Optional mid-stream entry: when provided, the run skips the first
@@ -152,6 +154,7 @@ export default function SprintView({
     if (endedRef.current) return;
     endedRef.current = true;
     clearTimers();
+    resetPitch();
     setPhase("ended");
     onGameEnd?.();
   }
@@ -185,7 +188,8 @@ export default function SprintView({
       // Subtle confetti burst from the center.
       confetti({ particleCount: 20, spread: 60, startVelocity: 30, gravity: 1, ticks: 90, scalar: 1.6, origin: { x: 0.5, y: 0.6 }, colors: ["#1e3a5f", "#315d8f", "#dce8f5"] });
 
-      playCorrect();
+      const answeredQuickly = performance.now() - questionStartRef.current < FAST_ANSWER_MS;
+      playCorrect(answeredQuickly);
 
       const gained = 10 + Math.min(streakRef.current, 5) * 2;
       streakRef.current += 1;

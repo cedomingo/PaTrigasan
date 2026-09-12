@@ -41,9 +41,7 @@ export default function SprintHUD({ score, secondsLeft, qPercent }: SprintHUDPro
         className="mt-4 h-1.5 overflow-hidden rounded-sm bg-blue-faint"
       >
         <div
-          className={`h-full rounded-sm transition-[width] duration-75 ease-linear ${
-            low ? "bg-wrong" : "bg-navy"
-          }`}
+          className={`h-full rounded-sm ${low ? "bg-wrong" : "bg-navy"}`}
           style={{ width: `${qPercent}%` }}
         />
       </div>

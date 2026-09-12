@@ -103,7 +103,7 @@ export default function SprintPreview({
     if (isCorrect) {
       // Subtle confetti + sound on correct preview answer.
       confetti({ particleCount: 20, spread: 60, startVelocity: 30, gravity: 1, ticks: 90, scalar: 1.6, origin: { x: 0.5, y: 0.6 }, colors: ["#1e3a5f", "#315d8f", "#dce8f5"] });
-      playCorrect();
+      playCorrect(true);
 
       // Full points for the first-question answer, streak starting at 0 —
       // the same curve the run uses. Hand off immediately so SprintView
@@ -152,10 +152,13 @@ export default function SprintPreview({
     if (phase !== "revealed" || chosenKey === null || !initial.question) {
       return "default";
     }
-    if (key === initial.question.correctKey) return "correct";
-    if (key === chosenKey) return "wrong";
-    if (chosenKey === initial.question.correctKey) return "dim";
-    return "default";
+    const isCorrect = chosenKey === initial.question.correctKey;
+    if (isCorrect) {
+      return key === initial.question.correctKey ? "correct" : "dim";
+    }
+    // Wrong pick: mark only the chosen option, keep the correct answer
+    // unrevealed so the retry isn't a giveaway.
+    return key === chosenKey ? "wrong" : "default";
   }
 
   const question = initial.question;
