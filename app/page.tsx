@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { getAllSubjects, getAllCategories } from "@/data";
 import { getPlayerName, setPlayerName } from "@/lib/cookies";
 import { getFlashcardItems, shuffle, type SprintHandoff } from "@/lib/quiz-engine";
@@ -9,9 +10,38 @@ import IntroOverlay from "@/components/landing/IntroOverlay";
 import LeaderboardSection from "@/components/leaderboard/LeaderboardSection";
 import NameInput from "@/components/landing/NameInput";
 import ModeTabBar, { type ModeTab } from "@/components/landing/ModeTabBar";
-import SprintPreview from "@/components/sprint/SprintPreview";
 import SprintView from "@/components/sprint/SprintView";
 import FlashcardStack from "@/components/flashcards/FlashcardStack";
+
+/**
+ * SprintPreview picks its first question with `Math.random()` inside a
+ * `useState` initializer. That initializer runs once during SSR (to
+ * produce the HTML) and once again during client hydration — two separate
+ * random draws — so the server's shuffle and the client's shuffle almost
+ * never match. `MathText` renders its KaTeX markup with
+ * `suppressHydrationWarning`, which stops React from patching that
+ * mismatch back into the DOM, so the page keeps showing the *server's*
+ * answer text while every click handler and "correct/wrong" highlight is
+ * wired to the *client's* (different) shuffle — the correct option's text
+ * ends up sitting wherever a distractor landed on the server's draw, so it
+ * visually reads as "wrong" and vice versa. This only ever affects the
+ * very first question, since every later question is generated entirely
+ * client-side after hydration with nothing server-rendered to conflict
+ * with.
+ *
+ * Loading SprintPreview with `ssr: false` means there is no server-drawn
+ * version to disagree with in the first place — the very first question
+ * is picked exactly once, on the client, and the DOM the user sees is the
+ * DOM the click handlers were bound against.
+ */
+const SprintPreview = dynamic(() => import("@/components/sprint/SprintPreview"), {
+  ssr: false,
+  loading: () => (
+    <Card className="min-h-[36rem] p-8 sm:p-10">
+      <p className="font-sans text-sm text-text-muted">Loading question…</p>
+    </Card>
+  ),
+});
 
 const subjects = getAllSubjects();
 
