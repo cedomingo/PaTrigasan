@@ -9,6 +9,8 @@ import {
   type SprintHandoff,
   type SprintQuestion,
 } from "@/lib/quiz-engine";
+import confetti from "canvas-confetti";
+import { playCorrect } from "@/lib/sfx";
 import AnswerOption, { type AnswerOptionStatus } from "./AnswerOption";
 import SprintHUD from "./SprintHUD";
 
@@ -99,6 +101,10 @@ export default function SprintPreview({
     setPhase("revealed");
 
     if (isCorrect) {
+      // Subtle confetti + sound on correct preview answer.
+      confetti({ particleCount: 20, spread: 60, startVelocity: 30, gravity: 1, ticks: 90, scalar: 1.6, origin: { x: 0.5, y: 0.6 }, colors: ["#1e3a5f", "#315d8f", "#dce8f5"] });
+      playCorrect();
+
       // Full points for the first-question answer, streak starting at 0 —
       // the same curve the run uses. Hand off immediately so SprintView
       // starts the timers without any delay.

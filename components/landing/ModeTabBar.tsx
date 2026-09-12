@@ -82,7 +82,7 @@ export default function ModeTabBar({
               <button
                 type="button"
                 onClick={() => onSelect(tab.id)}
-                className={`flex-1 px-4 py-2.5 text-left font-sans text-sm font-medium transition-colors duration-150 ${
+                className={`flex-1 px-4 py-2.5 text-left font-sans text-sm font-medium transition-colors duration-150 h-full ${
                   isActive
                     ? "bg-white text-navy"
                     : "bg-blue-faint text-text-muted hover:bg-blue-soft hover:text-navy"
@@ -100,7 +100,7 @@ export default function ModeTabBar({
                 aria-label={`${tab.label} categories`}
                 aria-expanded={isDropdownOpen}
                 onClick={(e) => toggleDropdown(tab.id, e)}
-                className={`px-3 py-2.5 transition-colors duration-150 border-l ${
+                className={`px-3 py-2.5 transition-colors duration-150 border-l h-full ${
                   isActive
                     ? "bg-white text-navy border-border"
                     : "bg-blue-faint text-text-muted border-border hover:bg-blue-soft hover:text-navy"

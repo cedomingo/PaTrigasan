@@ -6,6 +6,8 @@ import { getAllCategories } from "@/data";
 import { buildQuestionQueue, type SprintHandoff, type SprintQuestion } from "@/lib/quiz-engine";
 import AnswerOption, { type AnswerOptionStatus } from "./AnswerOption";
 import SprintHUD from "./SprintHUD";
+import confetti from "canvas-confetti";
+import { playCorrect, resetPitch } from "@/lib/sfx";
 import SprintResults from "./SprintResults";
 
 /**
@@ -114,6 +116,7 @@ export default function SprintView({
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answeredRef = useRef(false);
   const endedRef = useRef(false);
+  const questionStartRef = useRef(performance.now());
 
   function clearTimers() {
     if (totalTimerRef.current) clearInterval(totalTimerRef.current);
@@ -162,6 +165,7 @@ export default function SprintView({
     if (!q) return;
 
     answeredRef.current = false;
+    questionStartRef.current = performance.now();
     setQuestion(q);
     setAnswer(null);
     setStatusMessage("");
@@ -178,6 +182,11 @@ export default function SprintView({
     const isCorrect = chosenKey === correctKey;
 
     if (isCorrect) {
+      // Subtle confetti burst from the center.
+      confetti({ particleCount: 20, spread: 60, startVelocity: 30, gravity: 1, ticks: 90, scalar: 1.6, origin: { x: 0.5, y: 0.6 }, colors: ["#1e3a5f", "#315d8f", "#dce8f5"] });
+
+      playCorrect();
+
       const gained = 10 + Math.min(streakRef.current, 5) * 2;
       streakRef.current += 1;
       setScore((s) => s + gained);
@@ -190,6 +199,7 @@ export default function SprintView({
       }
     } else {
       streakRef.current = 0;
+      resetPitch();
       setMissedCount((m) => m + 1);
       setStatusMessage(chosenKey ? "Not quite — keep going." : "Time's up — keep going.");
 
@@ -217,6 +227,8 @@ export default function SprintView({
     totalTimeLeftRef.current = TOTAL_MS;
     answeredRef.current = false;
     endedRef.current = false;
+    questionStartRef.current = performance.now();
+    resetPitch();
 
     setPhase("playing");
     setQuestion(run.question);
@@ -309,7 +321,7 @@ export default function SprintView({
               </p>
               <button
                 type="button"
-                onClick={onExit}
+                onClick={() => { resetPitch(); onExit(); }}
                 className="shrink-0 py-0 px-2 font-sans text-xs text-text-muted transition-colors hover:text-navy"
               >
                 ≪ Exit sprint

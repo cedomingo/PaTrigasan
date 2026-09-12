@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, Button, Divider, SectionLabel } from "@/components/ui";
 import { writeScore } from "@/lib/leaderboard";
 import { getPlayerName } from "@/lib/cookies";
@@ -33,28 +33,42 @@ export default function SprintResults({
   categoryIds,
   onPlayAgain,
 }: SprintResultsProps) {
-  const [saved, setSaved] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const savedRef = useRef(false);
 
-  async function handleSave() {
+  // Fade in after mount.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  // Auto-save highest score on mount — ref guard prevents double-fire
+  // in React strict mode / concurrent renders.
+  useEffect(() => {
+    if (savedRef.current) return;
+    savedRef.current = true;
+
     const name = getPlayerName().trim();
     if (!name) return;
-    try {
-      await writeScore({
-        name,
-        score,
-        correctCount,
-        missedCount,
-        bestStreak,
-        categoryIds,
-      });
-      setSaved(true);
-    } catch {
+    writeScore({
+      name,
+      score,
+      correctCount,
+      missedCount,
+      bestStreak,
+      categoryIds,
+    }).catch(() => {
       // silently ignore
-    }
-  }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="flex min-h-[32rem] flex-col items-center justify-center text-center">
+    <div
+      className={`flex min-h-[32rem] flex-col items-center justify-center text-center transition-opacity duration-500 ease-out ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
+    >
       <SectionLabel tone="muted">Time&apos;s up</SectionLabel>
 
       <p className="mt-4 font-sans text-sm text-text-muted">Final score</p>
@@ -71,15 +85,6 @@ export default function SprintResults({
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button variant="primary" size="lg" className="flex-1" onClick={onPlayAgain}>
           Play again
-        </Button>
-        <Button
-          variant="secondary"
-          size="lg"
-          className="flex-1"
-          onClick={handleSave}
-          disabled={saved}
-        >
-          {saved ? "Saved ✓" : "Save score"}
         </Button>
       </div>
     </div>

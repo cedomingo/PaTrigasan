@@ -7,6 +7,9 @@ import {
   limit,
   onSnapshot,
   serverTimestamp,
+  getDocs,
+  deleteDoc,
+  doc,
   type QuerySnapshot,
   type DocumentData,
 } from "firebase/firestore";
@@ -30,17 +33,42 @@ export function getFullMixCategoryIds(): string[] {
 }
 
 /**
- * Writes one completed run to Firestore. Called by SprintView's
- * SprintResults component after a run ends.
+ * Writes one completed run to Firestore. If a score already exists for
+ * the same player name + category set, only the higher score is kept.
+ * Called automatically when a sprint run ends.
  */
 export async function writeScore(entry: NewScoreEntry): Promise<void> {
+  const sorted = sortCategoryIds(entry.categoryIds);
+
+  // Check for an existing score from the same player in the same category set.
+  const existing = query(
+    collection(db, SCORES_COLLECTION),
+    where("name", "==", entry.name),
+    where("categoryIds", "==", sorted),
+    orderBy("score", "desc"),
+    limit(1)
+  );
+  const snapshot = await getDocs(existing);
+
+  if (!snapshot.empty) {
+    const best = snapshot.docs[0];
+    const bestScore = best.data().score ?? 0;
+    if (entry.score > bestScore) {
+      // New high score — delete the old one and write the new.
+      await deleteDoc(doc(db, SCORES_COLLECTION, best.id));
+    } else {
+      // Existing score is already higher or equal — do nothing.
+      return;
+    }
+  }
+
   await addDoc(collection(db, SCORES_COLLECTION), {
     name: entry.name,
     score: entry.score,
     correctCount: entry.correctCount,
     missedCount: entry.missedCount,
     bestStreak: entry.bestStreak,
-    categoryIds: sortCategoryIds(entry.categoryIds),
+    categoryIds: sorted,
     timestamp: serverTimestamp(),
   });
 }

@@ -69,7 +69,7 @@ export default function CategoryDropdown({
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
-        className={`flex w-full items-center justify-between gap-3 rounded-sm border px-5 py-3.5 font-sans text-sm font-medium text-navy transition-colors duration-150 ${
+        className={`flex w-full items-center justify-between gap-3 rounded-sm border px-5 py-3.5 font-sans text-sm font-medium text-navy transition-colors duration-150 h-full ${
           open
             ? "border-navy bg-blue-faint"
             : "border-border bg-white hover:border-blue-medium hover:bg-blue-faint"
