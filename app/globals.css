@@ -142,3 +142,30 @@ h3,
   animation: view-enter 220ms ease-out both;
 }
 
+/*
+ * Idle motion for BauhausGrid (components/background/BauhausGrid.tsx).
+ * Each tile is assigned one or the other at random, with its own
+ * duration/delay/amount via the --sway-deg / --drift-amt custom
+ * properties set inline per cell — kept here as plain CSS so the
+ * prefers-reduced-motion rule above neutralizes it automatically.
+ */
+@keyframes bauhaus-sway {
+  0%,
+  100% {
+    transform: rotate(calc(-1 * var(--sway-deg, 4deg)));
+  }
+  50% {
+    transform: rotate(var(--sway-deg, 4deg));
+  }
+}
+
+@keyframes bauhaus-drift {
+  0%,
+  100% {
+    transform: translate(calc(-1 * var(--drift-amt, 3px)), calc(-1 * var(--drift-amt, 3px)));
+  }
+  50% {
+    transform: translate(var(--drift-amt, 3px), var(--drift-amt, 3px));
+  }
+}
+
