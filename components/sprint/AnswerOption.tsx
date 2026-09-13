@@ -26,6 +26,13 @@ const statusClasses: Record<AnswerOptionStatus, string> = {
  * The reveal is never color-only: a correct/wrong option also gets a small
  * glyph and an accessible label suffix, so the result reads the same for
  * colorblind players and screen-reader users.
+ *
+ * The button has a fixed height rather than a min-height: tall LaTeX
+ * (display-style fractions such as \dfrac{1}{x}) would otherwise stretch
+ * its own option and make the grid rows jump between questions. Vertical
+ * padding is dropped in favour of centering, so 4rem comfortably fits the
+ * tallest answer in the bank (a display fraction with a nested radical is
+ * ~2.3em of KaTeX leading) with room to spare — nothing is ever clipped.
  */
 export default function AnswerOption({
   label,
@@ -52,7 +59,7 @@ export default function AnswerOption({
       onClick={onClick}
       disabled={disabled}
       aria-label={revealLabel}
-      className={`flex min-h-[3.25rem] items-center gap-3 rounded-md border p-4 text-left shadow-[var(--shadow-card)] transition-[color,background-color,border-color,box-shadow] duration-150 disabled:cursor-default ${statusClasses[status]}`}
+      className={`flex h-16 items-center gap-3 rounded-md border px-4 text-left shadow-[var(--shadow-card)] transition-[color,background-color,border-color,box-shadow] duration-150 disabled:cursor-default ${statusClasses[status]}`}
     >
       <span className="font-sans text-xs font-semibold text-text-muted">{label}</span>
       <MathText latex={latex} />

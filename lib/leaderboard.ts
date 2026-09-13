@@ -1,6 +1,7 @@
 import {
   collection,
   addDoc,
+  setDoc,
   query,
   where,
   orderBy,
@@ -9,7 +10,6 @@ import {
   serverTimestamp,
   getDocs,
   deleteDoc,
-  doc,
   type QuerySnapshot,
   type DocumentData,
 } from "firebase/firestore";
@@ -33,36 +33,36 @@ export function getFullMixCategoryIds(): string[] {
 }
 
 /**
- * Writes one completed run to Firestore. If a score already exists for
- * the same player name + category set, only the higher score is kept.
- * Called automatically when a sprint run ends.
+ * Writes one completed run to Firestore, keeping only the higher score for
+ * the *device* (see /lib/device.ts) + category set. Called when a sprint run
+ * ends and autosave is on (see SprintResults).
+ *
+ * Identity is the device, not the name: a player who changes the name field
+ * and then beats their high score simply relabels their existing row, rather
+ * than banking a second entry under the new name. A run that doesn't beat the
+ * saved score is a no-op — nothing is written, so the stored name stays put.
+ *
+ * The lookup is deliberately equality-only — `where(deviceId) +
+ * where(categoryIds)`, no `orderBy`. Adding a sort on `score` would make
+ * this a compound query that Firestore refuses to run without a dedicated
+ * (deviceId, categoryIds, score) composite index, and since the caller
+ * swallows write errors a missing index meant "every finished run silently
+ * fails to save". Equality-only filters are served by Firestore's merged
+ * single-field indexes, so saving works on a stock project; the best row is
+ * picked here instead.
  */
 export async function writeScore(entry: NewScoreEntry): Promise<void> {
   const sorted = sortCategoryIds(entry.categoryIds);
+  const rows = await fetchDeviceRows(entry.deviceId, sorted);
+  const best = rows[0];
 
-  // Check for an existing score from the same player in the same category set.
-  const existing = query(
-    collection(db, SCORES_COLLECTION),
-    where("name", "==", entry.name),
-    where("categoryIds", "==", sorted),
-    orderBy("score", "desc"),
-    limit(1)
-  );
-  const snapshot = await getDocs(existing);
+  // Already-saved score is higher (or equal) — keep it, write nothing. The
+  // stored name is deliberately left alone in this case: a lower run under a
+  // new name shouldn't relabel a high score it didn't beat.
+  if (best && (best.data().score ?? 0) >= entry.score) return;
 
-  if (!snapshot.empty) {
-    const best = snapshot.docs[0];
-    const bestScore = best.data().score ?? 0;
-    if (entry.score > bestScore) {
-      // New high score — delete the old one and write the new.
-      await deleteDoc(doc(db, SCORES_COLLECTION, best.id));
-    } else {
-      // Existing score is already higher or equal — do nothing.
-      return;
-    }
-  }
-
-  await addDoc(collection(db, SCORES_COLLECTION), {
+  const payload = {
+    deviceId: entry.deviceId,
     name: entry.name,
     score: entry.score,
     correctCount: entry.correctCount,
@@ -70,7 +70,53 @@ export async function writeScore(entry: NewScoreEntry): Promise<void> {
     bestStreak: entry.bestStreak,
     categoryIds: sorted,
     timestamp: serverTimestamp(),
-  });
+  };
+
+  if (!best) {
+    await addDoc(collection(db, SCORES_COLLECTION), payload);
+    return;
+  }
+
+  // New high score — rewrite the kept row in place (taking the new name with
+  // it) rather than delete + add, so the player's entry never briefly
+  // vanishes and a failed add can't lose the old score. Any extra rows for
+  // the same device + set are the old/lower saves, so they go.
+  await setDoc(best.ref, payload);
+  await Promise.all(rows.slice(1).map((row) => deleteDoc(row.ref)));
+}
+
+/**
+ * The device's saved rows for an exact category set, best score first. Same
+ * equality-only shape as the write path below, so both are served by
+ * Firestore's merged single-field indexes.
+ */
+async function fetchDeviceRows(deviceId: string, sortedCategoryIds: string[]) {
+  const snapshot = await getDocs(
+    query(
+      collection(db, SCORES_COLLECTION),
+      where("deviceId", "==", deviceId),
+      where("categoryIds", "==", sortedCategoryIds)
+    )
+  );
+
+  return [...snapshot.docs].sort(
+    (a, b) => (b.data().score ?? 0) - (a.data().score ?? 0)
+  );
+}
+
+/**
+ * This device's best saved score for an exact category set, or 0 when it has
+ * none yet. SprintView reads this *before* a run starts so the results screen
+ * can label a record run without racing the autosave write of that same run
+ * (which would otherwise overwrite the previous best and make every score look
+ * unremarkable).
+ */
+export async function getDeviceBestScore(
+  deviceId: string,
+  categoryIds: string[]
+): Promise<number> {
+  const rows = await fetchDeviceRows(deviceId, sortCategoryIds(categoryIds));
+  return rows[0]?.data().score ?? 0;
 }
 
 function snapshotToEntries(snapshot: QuerySnapshot<DocumentData>): ScoreEntry[] {
@@ -79,6 +125,7 @@ function snapshotToEntries(snapshot: QuerySnapshot<DocumentData>): ScoreEntry[] 
     return {
       id: docSnap.id,
       name: data.name ?? "Anonymous",
+      deviceId: data.deviceId ?? "",
       score: data.score ?? 0,
       correctCount: data.correctCount ?? 0,
       missedCount: data.missedCount ?? 0,

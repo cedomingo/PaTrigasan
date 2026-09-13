@@ -3,10 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Card, Button, Divider, SectionLabel } from "@/components/ui";
 import { writeScore } from "@/lib/leaderboard";
-import { getPlayerName } from "@/lib/cookies";
+import { getPlayerNameOrDefault } from "@/lib/cookies";
+import { getDeviceId } from "@/lib/device";
+import { useAutosaveScore } from "@/lib/preferences";
 
 interface SprintResultsProps {
   score: number;
+  /**
+   * The device's best saved score for this category set, read before the run
+   * started. `null` means the read hadn't resolved (or failed), so no record
+   * claim is made rather than guessing.
+   */
+  previousBest: number | null;
   correctCount: number;
   missedCount: number;
   bestStreak: number;
@@ -27,6 +35,7 @@ function StatBox({ value, label }: { value: number; label: string }) {
 
 export default function SprintResults({
   score,
+  previousBest,
   correctCount,
   missedCount,
   bestStreak,
@@ -34,7 +43,9 @@ export default function SprintResults({
   onPlayAgain,
 }: SprintResultsProps) {
   const [visible, setVisible] = useState(false);
+  const autosaveScore = useAutosaveScore();
   const savedRef = useRef(false);
+  const isNewHighScore = previousBest !== null && score > previousBest;
 
   // Fade in after mount.
   useEffect(() => {
@@ -42,15 +53,24 @@ export default function SprintResults({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Auto-save highest score on mount — ref guard prevents double-fire
-  // in React strict mode / concurrent renders.
+  // Autosave the finished run while the setting is on. Because this reacts to
+  // the setting rather than running once on mount, it also covers the player
+  // turning autosave ON from the results screen after a run that finished with
+  // it off — the run is saved then, under the same rules. writeScore only ever
+  // keeps the higher score for this device + category set, so a repeat attempt
+  // can never lower what's already stored, and renaming yourself relabels the
+  // existing row instead of adding a second one.
+  //
+  // The ref guard prevents a double write in React strict mode / concurrent
+  // renders; it's reset on failure so a later toggle can retry.
   useEffect(() => {
-    if (savedRef.current) return;
-    savedRef.current = true;
+    if (!autosaveScore || savedRef.current) return;
 
-    const name = getPlayerName().trim();
-    if (!name) return;
+    const name = getPlayerNameOrDefault();
+
+    savedRef.current = true;
     writeScore({
+      deviceId: getDeviceId(),
       name,
       score,
       correctCount,
@@ -58,10 +78,10 @@ export default function SprintResults({
       bestStreak,
       categoryIds,
     }).catch(() => {
-      // silently ignore
+      savedRef.current = false;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autosaveScore]);
 
   return (
     <div
@@ -71,7 +91,9 @@ export default function SprintResults({
     >
       <SectionLabel tone="muted">Time&apos;s up</SectionLabel>
 
-      <p className="mt-4 font-sans text-sm text-text-muted">Final score</p>
+      <p className="mt-4 font-sans text-sm text-text-muted">
+        {isNewHighScore ? "New highscore!" : "Final score"}
+      </p>
       <div className="font-serif text-6xl text-navy">{score}</div>
 
       <div className="mx-auto mt-8 grid max-w-sm grid-cols-3 gap-3">

@@ -3,9 +3,13 @@
  *
  * Writes a handful of realistic-looking ScoreEntry documents so you can
  * see the leaderboard actually populated — both the "Full Mix" and
- * "By Topic" views. Safe to run multiple times; every run just adds more
- * rows. Delete them from the Firebase console when you're done, or wipe
- * the whole `scores` collection.
+ * "By Topic" views. Safe to run multiple times: each sample row gets its own
+ * synthetic device id, so a re-run just keeps whichever score is higher
+ * rather than piling up duplicates. Delete them from the Firebase console
+ * when you're done, or wipe the whole `scores` collection.
+ *
+ * Note this script writes no real device ids — a real browser's scores live
+ * under the id in its localStorage (see /lib/device.ts).
  */
 import { getAllCategoryIdsSorted, getAllCategories } from "../data";
 import { writeScore } from "../lib/leaderboard";
@@ -29,13 +33,14 @@ async function main() {
 
   console.log(`Seeding ${runs.length} sample scores...`);
 
-  for (const run of runs) {
+  for (const [index, run] of runs.entries()) {
     const correctCount = randomInt(8, 30);
     const missedCount = randomInt(0, 6);
     const bestStreak = randomInt(2, Math.max(2, correctCount));
     const score = correctCount * randomInt(10, 16);
 
     await writeScore({
+      deviceId: `seed-device-${index}`,
       name: NAMES[randomInt(0, NAMES.length - 1)],
       score,
       correctCount,

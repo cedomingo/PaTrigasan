@@ -3,7 +3,7 @@ import { getFirestore } from "firebase/firestore";
 
 /**
  * Firestore-only Firebase client. No Firebase Auth is configured or needed —
- * this app is fully anonymous (see /lib/cookies.ts for identity).
+ * this app is fully anonymous (see /lib/device.ts for identity).
  *
  * Requires the following in .env.local (see .env.local.example):
  *   NEXT_PUBLIC_FIREBASE_API_KEY

@@ -15,7 +15,14 @@
 export interface ScoreEntry {
   /** Firestore document id, present once read back from the DB. */
   id?: string;
-  /** Display name, from the name cookie at time of play. */
+  /**
+   * Stable per-browser id (see /lib/device.ts) — the identity a row actually
+   * belongs to. One device holds at most one row per category set, so changing
+   * the display name relabels that row instead of adding a new one. Rows
+   * written before devices were tracked read back as `""`.
+   */
+  deviceId: string;
+  /** Display name label, from the name cookie at time of play. Mutable. */
   name: string;
   /** Final score for the run. */
   score: number;

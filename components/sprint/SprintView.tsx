@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, Divider, MathText, SectionLabel } from "@/components/ui";
 import { getAllCategories } from "@/data";
 import { buildQuestionQueue, type SprintHandoff, type SprintQuestion } from "@/lib/quiz-engine";
+import { getDeviceBestScore } from "@/lib/leaderboard";
+import { getDeviceId } from "@/lib/device";
 import AnswerOption, { type AnswerOptionStatus } from "./AnswerOption";
 import SprintHUD from "./SprintHUD";
 import confetti from "canvas-confetti";
@@ -103,6 +105,12 @@ export default function SprintView({
   // Best streak starts from the handoff so a preview-correct answer (streak 1)
   // still counts on the results screen if the run ends before another hit.
   const [bestStreak, setBestStreak] = useState(handoff?.streak ?? 0);
+  // This device's best saved score for these categories, read once at the
+  // start of the run so the results screen can tell a record run from an
+  // ordinary one. Read here rather than on the results screen on purpose: by
+  // then autosave may already have overwritten the old best with this very
+  // run, making every score look unremarkable. null until the read resolves.
+  const [previousBest, setPreviousBest] = useState<number | null>(null);
 
   // Fast-ticking game-loop bookkeeping lives in refs, not state, so the
   // 40ms/100ms interval callbacks never fight React's batching — only the
@@ -276,6 +284,23 @@ export default function SprintView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // One read per run (the component is keyed by category selection, so a new
+  // run remounts it). A failure just leaves the best unknown — the results
+  // screen then says "Final score" rather than claiming a record it can't
+  // verify.
+  useEffect(() => {
+    let cancelled = false;
+    getDeviceBestScore(getDeviceId(), categoryIds)
+      .then((best) => {
+        if (!cancelled) setPreviousBest(best);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function optionStatus(key: string): AnswerOptionStatus {
     if (!answer) return "default";
     if (key === answer.correctKey) return "correct";
@@ -338,6 +363,7 @@ export default function SprintView({
           <Card className="h-full p-8 sm:p-10">
             <SprintResults
               score={score}
+              previousBest={previousBest}
               correctCount={correctCount}
               missedCount={missedCount}
               bestStreak={bestStreak}

@@ -19,8 +19,8 @@ export default function NameInput({ name, onChange }: NameInputProps) {
         type="text"
         value={name}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="e.g. Ceej"
-        maxLength={40}
+        placeholder="e.g. Isko"
+        maxLength={20}
         className="w-full max-w-xs rounded-sm border border-border bg-white px-4 py-2.5 font-sans text-sm text-text placeholder:text-text-muted focus:border-blue-medium"
       />
     </div>

@@ -74,6 +74,8 @@ click it, wait ~a minute for the index to build, and reload.
 - `data/questions/` — question banks (`derivatives.ts`, `integrals.ts`).
 - `lib/firebase.ts` — Firestore client (no Firebase Auth).
 - `lib/cookies.ts` — display-name cookie, no accounts.
+- `lib/device.ts` — per-browser id that leaderboard rows are keyed by, so
+  renaming yourself relabels your row instead of adding a second one.
 - `lib/quiz-engine.ts` — question-queue builder, reused by Sprint and
   Flashcards.
 - `lib/leaderboard.ts` — `writeScore()`, `subscribeToLeaderboard()`,
