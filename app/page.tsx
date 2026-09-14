@@ -261,7 +261,7 @@ export default function Home() {
       {/* Practice flashcards — same card wrapper as sprint for visual consistency */}
       {activeTab === "practice" && selectedIds.size > 0 && (
         <section className="mx-auto mt-5 max-w-2xl px-6">
-          <Card className="min-h-[36rem] p-8 sm:p-10 flex flex-col">
+          <Card className="min-h-[36rem] p-8 sm:p-10">
             {total > 0 ? (
               <>
                 <div className="mb-4 flex items-center justify-between">
@@ -271,7 +271,12 @@ export default function Home() {
                   </span>
                 </div>
 
-                <div className="flex-1">
+                {/* Fixed height, matching FlashcardCard's own h-[360px] — mirrors
+                    Sprint's plain block-flow sizing instead of flex-grow, so this
+                    card's total height is driven by real content (floored at
+                    min-h-[36rem]) exactly like Sprint's, rather than being forced
+                    to exactly 36rem regardless of Sprint's actual rendered height. */}
+                <div className="h-[374px]">
                   <FlashcardStack
                     cards={visibleCards}
                     flipped={flipped}

@@ -174,7 +174,16 @@ export default function SprintPreview({
         </SectionLabel>        <p className="mt-6 font-sans text-sm text-text-muted">
             {question.categoryId.startsWith("integrals") ? "∫" : <>D<sub>x</sub></>} of:
           </p>
-        <div className="mt-1">
+        {/*
+         * Fixed-height slot for the asked function. A display-style fraction
+         * (e.g. \dfrac{1}{x}) is ~2.25em of KaTeX leading — ~5.1rem at the
+         * text-4xl (2.25rem) font size used here — versus ~0.7em for a plain
+         * function like \sin x. Without a reserved height a fraction would
+         * stretch the card and shift the layout down (mirrors the fixed h-16
+         * on AnswerOption). The 6rem slot fits the tallest construct in the
+         * bank, centered, with room to spare — nothing is ever clipped.
+         */}
+        <div className="mt-1 flex h-24 items-center justify-center overflow-visible">
           <MathText latex={question.fn} display className="text-4xl" />
         </div>
       </div>
