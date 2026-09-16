@@ -1,4 +1,9 @@
-import type { Category, CategoryQuestionBank, Subject } from "@/types";
+import type {
+  Category,
+  CategoryQuestionBank,
+  QuestionKind,
+  Subject,
+} from "@/types";
 import {
   derivativesCategories,
   derivativesQuestionBanks,
@@ -74,6 +79,32 @@ export function getQuestionBankForCategory(
   categoryId: string
 ): CategoryQuestionBank | undefined {
   return getAllQuestionBanks().find((bank) => bank.categoryId === categoryId);
+}
+
+/** Display order for question kinds, so headings read "Domain & Range". */
+const KIND_ORDER: QuestionKind[] = ["domain", "range"];
+
+/**
+ * The question kinds a subject splits its questions into, in display order.
+ * Subjects whose questions carry no `kind` (Derivatives, Integrals) return an
+ * empty array — their headings stay plain text.
+ */
+export function getSubjectKinds(subjectId: string): QuestionKind[] {
+  const categoryIds = new Set(
+    getAllCategories()
+      .filter((category) => category.subjectId === subjectId)
+      .map((category) => category.id)
+  );
+
+  const present = new Set<QuestionKind>();
+  for (const bank of getAllQuestionBanks()) {
+    if (!categoryIds.has(bank.categoryId)) continue;
+    for (const item of bank.items) {
+      if (item.kind) present.add(item.kind);
+    }
+  }
+
+  return KIND_ORDER.filter((kind) => present.has(kind));
 }
 
 /** Every category id currently available, sorted — the canonical "full mix" set for leaderboard queries. */

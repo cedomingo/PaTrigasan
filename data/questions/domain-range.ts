@@ -43,6 +43,20 @@ export const domainRangeCategories: Category[] = [
   },
 ];
 
+/**
+ * Every prompt in this subject reads `\operatorname{dom}(...)` or
+ * `\operatorname{ran}(...)`. Tagging each item once, here, lets the question
+ * queue and the flashcard deck narrow by DOMAIN / RANGE without the quiz
+ * engine having to parse LaTeX.
+ */
+const tagKind = (bank: CategoryQuestionBank): CategoryQuestionBank => ({
+  ...bank,
+  items: bank.items.map((item) => ({
+    ...item,
+    kind: item.fn.includes("\\operatorname{ran}") ? "range" : "domain",
+  })),
+});
+
 export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
   {
     categoryId: "domain-range-trig",
@@ -314,4 +328,4 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
       },
     ],
   },
-];
+].map(tagKind);

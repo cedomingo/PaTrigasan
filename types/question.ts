@@ -1,4 +1,12 @@
 /**
+ * Optional facet a question can belong to. "Domain & Range" questions are
+ * tagged `"domain"` or `"range"` (the `dom(...)` / `ran(...)` prompts);
+ * subjects with no such split (Derivatives, Integrals) leave `kind` unset.
+ * Unset questions are never narrowed by the DOMAIN / RANGE toggles.
+ */
+export type QuestionKind = "domain" | "range";
+
+/**
  * One entry in a question bank. Mirrors the shape used by the original
  * Derivative Sprint's FAMILIES array, generalized so any subject
  * (derivatives, later integrals, etc.) can plug in.
@@ -15,6 +23,8 @@ export interface QuestionItem {
   key: string;
   /** LaTeX for the correct answer, e.g. "\\cos x". */
   ans: string;
+  /** Facet this question belongs to, when its subject is split by one. */
+  kind?: QuestionKind;
 }
 
 /** A question bank entry bound to its category id, as consumed by the quiz engine. */

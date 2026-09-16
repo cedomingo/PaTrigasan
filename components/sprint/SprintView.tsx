@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, Divider, MathText, SectionLabel } from "@/components/ui";
 import { getAllCategories } from "@/data";
+import type { QuestionKind } from "@/types";
 import { buildQuestionQueue, type SprintHandoff, type SprintQuestion } from "@/lib/quiz-engine";
 import { getDeviceBestScore } from "@/lib/leaderboard";
 import { getDeviceId } from "@/lib/device";
@@ -48,6 +49,9 @@ const FAST_ANSWER_MS = 2_500;
  */
 interface SprintViewProps {
   categoryIds: string[];
+  /** Question kinds the DOMAIN / RANGE toggles left on — also applied when
+   *  the queue is rebuilt mid-run, so a refill never leaks the other kind in. */
+  kinds: QuestionKind[];
   onExit: () => void;
   onGameEnd?: () => void;
   handoff?: SprintHandoff;
@@ -58,16 +62,17 @@ interface RevealedAnswer {
   correctKey: string;
 }
 
-function firstQuestionOf(categoryIds: string[]): {
+function firstQuestionOf(categoryIds: string[], kinds: QuestionKind[]): {
   queue: SprintQuestion[];
   question: SprintQuestion | null;
 } {
-  const queue = buildQuestionQueue(categoryIds);
+  const queue = buildQuestionQueue(categoryIds, kinds);
   return { queue, question: queue[0] ?? null };
 }
 
 export default function SprintView({
   categoryIds,
+  kinds,
   onExit,
   onGameEnd,
   handoff,
@@ -90,7 +95,7 @@ export default function SprintView({
         question: handoff.queue[handoff.nextIndex] ?? null,
       };
     }
-    return firstQuestionOf(categoryIds);
+    return firstQuestionOf(categoryIds, kinds);
   })[0];
 
   const [phase, setPhase] = useState<"playing" | "ended">("playing");
@@ -170,7 +175,7 @@ export default function SprintView({
   function nextQuestion() {
     qIndexRef.current += 1;
     if (qIndexRef.current >= queueRef.current.length) {
-      queueRef.current = queueRef.current.concat(buildQuestionQueue(categoryIds));
+      queueRef.current = queueRef.current.concat(buildQuestionQueue(categoryIds, kinds));
     }
     const q = queueRef.current[qIndexRef.current];
     if (!q) return;
@@ -232,7 +237,7 @@ export default function SprintView({
   function startGame() {
     clearTimers();
 
-    const run = firstQuestionOf(categoryIds);
+    const run = firstQuestionOf(categoryIds, kinds);
     queueRef.current = run.queue;
     qIndexRef.current = 0;
     streakRef.current = 0;

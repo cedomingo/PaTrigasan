@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, Divider, MathText, SectionLabel } from "@/components/ui";
 import { getAllCategories } from "@/data";
+import type { QuestionKind } from "@/types";
 import {
   buildQuestionQueue,
   buildSprintHandoff,
@@ -43,22 +44,25 @@ const PREVIEW_SCORE = 0;
 
 interface SprintPreviewProps {
   categoryIds: string[];
+  /** Question kinds the DOMAIN / RANGE toggles left on. */
+  kinds: QuestionKind[];
   onHandoff: (handoff: SprintHandoff) => void;
 }
 
 type PreviewPhase = "answering" | "revealed";
 
 /** First question of a fresh, shuffled queue for the given categories. */
-function firstQuestionOf(categoryIds: string[]): {
+function firstQuestionOf(categoryIds: string[], kinds: QuestionKind[]): {
   queue: SprintQuestion[];
   question: SprintQuestion | null;
 } {
-  const queue = buildQuestionQueue(categoryIds);
+  const queue = buildQuestionQueue(categoryIds, kinds);
   return { queue, question: queue[0] ?? null };
 }
 
 export default function SprintPreview({
   categoryIds,
+  kinds,
   onHandoff,
 }: SprintPreviewProps) {
   const categoryLabels = useMemo(
@@ -70,7 +74,7 @@ export default function SprintPreview({
   // remounts this component with a new `key` when the category selection
   // changes, so a fresh queue/question is generated then without any
   // sync-to-props effect.
-  const initial = useState(() => firstQuestionOf(categoryIds))[0];
+  const initial = useState(() => firstQuestionOf(categoryIds, kinds))[0];
 
   const [phase, setPhase] = useState<PreviewPhase>("answering");
   const [chosenKey, setChosenKey] = useState<string | null>(null);

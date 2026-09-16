@@ -1,4 +1,4 @@
-import type { QuestionItem } from "@/types";
+import type { QuestionItem, QuestionKind } from "@/types";
 import { getAllQuestionBanks } from "@/data";
 
 /**
@@ -22,6 +22,16 @@ export interface SprintQuestion {
   options: { key: string; ans: string }[];
 }
 
+/**
+ * Whether an item survives the DOMAIN / RANGE filter. Items with no `kind`
+ * (Derivatives, Integrals) aren't part of any facet, so they always pass;
+ * omitting `kinds` entirely means "no filter".
+ */
+function matchesKinds(item: QuestionItem, kinds?: QuestionKind[]): boolean {
+  if (!kinds || !item.kind) return true;
+  return kinds.includes(item.kind);
+}
+
 export function shuffle<T>(arr: T[]): T[] {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -32,12 +42,17 @@ export function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * Builds a shuffled question queue restricted to the given category ids.
- * Distractors are only ever drawn from the same category as the correct
- * answer, and are deduplicated by `key` (e.g. ln x / ln|x| share a key so
- * they never both appear as options).
+ * Builds a shuffled question queue restricted to the given category ids and,
+ * when `kinds` is given, to those question kinds (DOMAIN / RANGE). Filtering
+ * happens before distractors are drawn, so options always come from the same
+ * facet as the question. Distractors are only ever drawn from the same
+ * category as the correct answer, and are deduplicated by `key` (e.g. ln x /
+ * ln|x| share a key so they never both appear as options).
  */
-export function buildQuestionQueue(categoryIds: string[]): SprintQuestion[] {
+export function buildQuestionQueue(
+  categoryIds: string[],
+  kinds?: QuestionKind[]
+): SprintQuestion[] {
   const banks = getAllQuestionBanks().filter((bank) =>
     categoryIds.includes(bank.categoryId)
   );
@@ -45,9 +60,10 @@ export function buildQuestionQueue(categoryIds: string[]): SprintQuestion[] {
   const queue: SprintQuestion[] = [];
 
   for (const bank of banks) {
-    const pool = dedupeByKey(bank.items);
+    const items = bank.items.filter((item) => matchesKinds(item, kinds));
+    const pool = dedupeByKey(items);
 
-    for (const item of bank.items) {
+    for (const item of items) {
       const others = pool.filter((p) => p.key !== item.key);
       const distractors = shuffle(others).slice(0, 3);
       const options = shuffle([
@@ -110,13 +126,20 @@ export function buildSprintHandoff(
   };
 }
 
-/** All question items (unfiltered by dedup) for the given categories — used by Flashcard mode. */
+/**
+ * All question items (unfiltered by dedup) for the given categories — used by
+ * Flashcard mode. `kinds` narrows the deck the same way it narrows a sprint
+ * queue.
+ */
 export function getFlashcardItems(
-  categoryIds: string[]
+  categoryIds: string[],
+  kinds?: QuestionKind[]
 ): { categoryId: string; item: QuestionItem }[] {
   return getAllQuestionBanks()
     .filter((bank) => categoryIds.includes(bank.categoryId))
     .flatMap((bank) =>
-      bank.items.map((item) => ({ categoryId: bank.categoryId, item }))
+      bank.items
+        .filter((item) => matchesKinds(item, kinds))
+        .map((item) => ({ categoryId: bank.categoryId, item }))
     );
 }

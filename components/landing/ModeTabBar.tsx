@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Subject } from "@/types";
+import type { QuestionKind, Subject } from "@/types";
 import CategoryCheckboxGroup from "@/components/category/CategoryCheckboxGroup";
 
 export type ModeTab = "sprint" | "practice";
@@ -12,6 +12,9 @@ interface ModeTabBarProps {
   subjects: Subject[];
   selectedIds: Set<string>;
   onToggleCategory: (categoryId: string) => void;
+  /** Checked question kinds — rendered into the matching subject headings. */
+  kinds: Set<QuestionKind>;
+  onToggleKind: (kind: QuestionKind) => void;
 }
 
 const TABS: { id: ModeTab; label: string }[] = [
@@ -31,6 +34,8 @@ export default function ModeTabBar({
   subjects,
   selectedIds,
   onToggleCategory,
+  kinds,
+  onToggleKind,
 }: ModeTabBarProps) {
   const [openDropdown, setOpenDropdown] = useState<ModeTab | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -137,10 +142,13 @@ export default function ModeTabBar({
           <div className="mb-2 font-sans text-xs font-semibold uppercase tracking-[0.08em] text-navy">
             Choose your topics
           </div>
+
           <CategoryCheckboxGroup
             subjects={subjects}
             selectedIds={selectedIds}
             onToggle={onToggleCategory}
+            kinds={kinds}
+            onToggleKind={onToggleKind}
           />
           {selectedIds.size === 0 && (
             <p className="mt-3 font-sans text-xs text-text-muted">

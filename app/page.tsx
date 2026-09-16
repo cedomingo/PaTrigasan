@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { getAllSubjects, getAllCategories } from "@/data";
 import { getPlayerName, setPlayerName } from "@/lib/cookies";
+import type { QuestionKind } from "@/types";
 import { getFlashcardItems, shuffle, type SprintHandoff } from "@/lib/quiz-engine";
 import { Button, Card, Divider, SectionLabel } from "@/components/ui";
 import IntroOverlay from "@/components/landing/IntroOverlay";
@@ -48,6 +49,12 @@ const subjects = getAllSubjects();
 /** Trigonometric derivatives — checked by default, matching the target screenshot. */
 const DEFAULT_CATEGORY_ID = "derivatives-trig";
 
+/**
+ * Domain & Range splits its questions into DOMAIN and RANGE. Domain starts
+ * on, and at least one of the two always stays on — see `handleToggleKind`.
+ */
+const DEFAULT_KINDS: QuestionKind[] = ["domain"];
+
 const VISIBLE_DEPTH = 3;
 
 export default function Home() {
@@ -55,6 +62,8 @@ export default function Home() {
     () => new Set([DEFAULT_CATEGORY_ID])
   );
   const [activeTab, setActiveTab] = useState<ModeTab>("sprint");
+  const [kinds, setKinds] = useState<Set<QuestionKind>>(() => new Set(DEFAULT_KINDS));
+  const kindsArray = useMemo(() => Array.from(kinds), [kinds]);
   const [name, setName] = useState("");
   const [introComplete, setIntroComplete] = useState(false);
   const [sprintHandoff, setSprintHandoff] = useState<SprintHandoff | null>(null);
@@ -75,6 +84,18 @@ export default function Home() {
         next.add(categoryId);
       }
       return next;
+    });
+  }
+
+  /**
+   * Toggles a DOMAIN / RANGE kind. The last remaining one can't be turned
+   * off — checking the other first is the only way to drop it.
+   */
+  function handleToggleKind(kind: QuestionKind) {
+    setKinds((prev) => {
+      if (!prev.has(kind)) return new Set([...prev, kind]);
+      if (prev.size === 1) return prev;
+      return new Set([...prev].filter((k) => k !== kind));
     });
   }
 
@@ -106,14 +127,17 @@ export default function Home() {
     setSprintLive(false);
   }
 
-  const selectionKey = Array.from(selectedIds).sort().join(",");
+  /** Categories *and* kinds — a change to either regenerates the question queues. */
+  const selectionKey = `${Array.from(selectedIds).sort().join(",")}|${kindsArray.join()}`;
 
   // Flashcards state (inline)
   const categoryLabels = useMemo(
     () => new Map(getAllCategories().map((c) => [c.id, c.label])),
     []
   );
-  const [deck, setDeck] = useState(() => getFlashcardItems(Array.from(selectedIds)));
+  const [deck, setDeck] = useState(() =>
+    getFlashcardItems(Array.from(selectedIds), kindsArray)
+  );
   const [order, setOrder] = useState(() => shuffle(deck.map((_, i) => i)));
   const [flipped, setFlipped] = useState(false);
   const [cycleIndex, setCycleIndex] = useState(0);
@@ -153,7 +177,7 @@ export default function Home() {
 
   // Update deck+order together when selection changes
   useEffect(() => {
-    const newDeck = getFlashcardItems(Array.from(selectedIds));
+    const newDeck = getFlashcardItems(Array.from(selectedIds), kindsArray);
     const newOrder = shuffle(newDeck.map((_, i) => i));
     setDeck(newDeck);
     setOrder(newOrder);
@@ -234,6 +258,8 @@ export default function Home() {
           subjects={subjects}
           selectedIds={selectedIds}
           onToggleCategory={handleToggleCategory}
+          kinds={kinds}
+          onToggleKind={handleToggleKind}
         />
       </section>
 
@@ -244,12 +270,14 @@ export default function Home() {
             <SprintPreview
               key={selectionKey}
               categoryIds={Array.from(selectedIds)}
+              kinds={kindsArray}
               onHandoff={handleSprintHandoff}
             />
           ) : (
             <SprintView
               key={`sprint-run-${selectionKey}`}
               categoryIds={Array.from(selectedIds)}
+              kinds={kindsArray}
               onExit={handleSprintExit}
               onGameEnd={handleSprintGameEnd}
               handoff={sprintHandoff}
