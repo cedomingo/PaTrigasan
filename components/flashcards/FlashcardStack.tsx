@@ -1,11 +1,14 @@
 "use client";
 
 import { AnimatePresence, MotionConfig, motion, useMotionValue, useTransform } from "framer-motion";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import FlashcardCard from "./FlashcardCard";
 
 const ADVANCE_THRESHOLD = 80;
 const TAP_THRESHOLD = 6;
+// How long the cards behind stay filled in after a Next/Previous click, so
+// their contents are on screen for the whole slide-forward animation.
+const REVEAL_HOLD_MS = 320;
 
 interface StackCard {
   id: number;
@@ -29,9 +32,25 @@ const STACK_OFFSETS = [
 
 export default function FlashcardStack({ cards, flipped, onAdvance, onFlip }: FlashcardStackProps) {
   const [exitDir, setExitDir] = useState<"left" | "right" | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Contents of the cards under the top one are blank until the stack is in motion.
+  const fillBehind = dragging || advancing;
+
+  useEffect(
+    () => () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    },
+    []
+  );
 
   function handleAdvance(dir: "next" | "previous") {
     setExitDir(dir === "next" ? "left" : "right");
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    setAdvancing(true);
+    advanceTimer.current = setTimeout(() => setAdvancing(false), REVEAL_HOLD_MS);
     onAdvance(dir);
   }
 
@@ -47,6 +66,8 @@ export default function FlashcardStack({ cards, flipped, onAdvance, onFlip }: Fl
               flipped={position === 0 ? flipped : false}
               onAdvance={handleAdvance}
               onFlip={onFlip}
+              onDraggingChange={setDragging}
+              fillBehind={fillBehind}
               entryDir={position === 0 && exitDir ? (exitDir === "left" ? "right" : "left") : null}
             />
           ))}
@@ -62,6 +83,8 @@ function StackedCard({
   flipped,
   onAdvance,
   onFlip,
+  onDraggingChange,
+  fillBehind,
   entryDir,
 }: {
   card: StackCard;
@@ -69,6 +92,8 @@ function StackedCard({
   flipped: boolean;
   onAdvance: (dir: "next" | "previous") => void;
   onFlip: () => void;
+  onDraggingChange: (dragging: boolean) => void;
+  fillBehind: boolean;
   entryDir: "left" | "right" | null;
 }) {
   const dragX = useMotionValue(0);
@@ -77,6 +102,7 @@ function StackedCard({
   const draggable = position === 0;
   const target = STACK_OFFSETS[position] ?? STACK_OFFSETS[STACK_OFFSETS.length - 1];
   const entryX = entryDir === "left" ? -260 : entryDir === "right" ? 260 : 0;
+  const contentVisible = position === 0 || fillBehind;
 
   const pointerDownTime = useRef(0);
   const pointerMoved = useRef(false);
@@ -103,6 +129,7 @@ function StackedCard({
   }
 
   function handleDragEnd() {
+    onDraggingChange(false);
     const x = dragX.get();
     if (Math.abs(x) < TAP_THRESHOLD) {
       onFlip();
@@ -131,6 +158,7 @@ function StackedCard({
       drag={draggable ? "x" : false}
       dragElastic={0.5}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+      onDragStart={draggable ? () => onDraggingChange(true) : undefined}
       onDragEnd={draggable ? handleDragEnd : undefined}
       onPointerDown={draggable ? handlePointerDown : undefined}
       onPointerMove={draggable ? handlePointerMove : undefined}
@@ -143,6 +171,7 @@ function StackedCard({
         prompt={card.prompt}
         answer={card.answer}
         flipped={flipped}
+        contentVisible={contentVisible}
       />
     </motion.div>
   );
