@@ -62,7 +62,16 @@ export default function AnswerOption({
       className={`flex h-16 items-center gap-3 rounded-md border px-4 text-left shadow-[var(--shadow-card)] transition-[color,background-color,border-color,box-shadow] duration-150 disabled:cursor-default ${statusClasses[status]}`}
     >
       <span className="font-sans text-xs font-semibold text-text-muted">{label}</span>
-      <MathText latex={latex} />
+      {/*
+       * `text-sm`, not the default body size: an answer at full size is
+       * wide enough that the long set-builder ones (e.g. the range of
+       * csc⁻¹x, a \dfrac inside \left\{...\right\}) wrap onto a second line
+       * and push past the button's fixed 4rem height. One step down keeps
+       * every answer in the bank on a single line, even in the two-column
+       * grid at its narrowest (640px) — verified by measuring every answer
+       * in headless Chrome.
+       */}
+      <MathText latex={latex} className="text-sm" />
 
     </button>
   );
