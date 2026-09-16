@@ -30,6 +30,18 @@ export const derivativesCategories: Category[] = [
     subject: DERIVATIVES_SUBJECT_NAME,
     subjectId: DERIVATIVES_SUBJECT_ID,
   },
+    {
+    id: "derivatives-hyperbolic",
+    label: "Hyperbolic",
+    subject: DERIVATIVES_SUBJECT_NAME,
+    subjectId: DERIVATIVES_SUBJECT_ID,
+  },
+  {
+    id: "derivatives-inverse-hyperbolic",
+    label: "Inverse Hyperbolic",
+    subject: DERIVATIVES_SUBJECT_NAME,
+    subjectId: DERIVATIVES_SUBJECT_ID,
+  },
 ];
 
 export const derivativesQuestionBanks: CategoryQuestionBank[] = [
@@ -63,6 +75,28 @@ export const derivativesQuestionBanks: CategoryQuestionBank[] = [
       { fn: "\\cot^{-1}x", key: "-1/1+x2", ans: "-\\dfrac{1}{1+x^2}" },
       { fn: "\\sec^{-1}x", key: "1/xsqrtx2-1", ans: "\\dfrac{1}{x\\sqrt{x^2-1}}" },
       { fn: "\\csc^{-1}x", key: "-1/xsqrtx2-1", ans: "-\\dfrac{1}{x\\sqrt{x^2-1}}" },
+    ],
+  },
+    {
+    categoryId: "derivatives-hyperbolic",
+    items: [
+      { fn: "\\sinh x", key: "cosh", ans: "\\cosh x" },
+      { fn: "\\cosh x", key: "sinh", ans: "\\sinh x" },
+      { fn: "\\tanh x", key: "sech2", ans: "\\operatorname{sech}^2 x" },
+      { fn: "\\coth x", key: "-csch2", ans: "-\\operatorname{csch}^2 x" },
+      { fn: "\\operatorname{sech} x", key: "-sechtanh", ans: "-\\operatorname{sech} x \\tanh x" },
+      { fn: "\\operatorname{csch} x", key: "-cschcoth", ans: "-\\operatorname{csch} x \\coth x" },
+    ],
+  },
+  {
+    categoryId: "derivatives-inverse-hyperbolic",
+    items: [
+      { fn: "\\sinh^{-1}x", key: "1/sqrtx2+1", ans: "\\dfrac{1}{\\sqrt{x^2+1}}" },
+      { fn: "\\cosh^{-1}x", key: "1/sqrtx2-1", ans: "\\dfrac{1}{\\sqrt{x^2-1}}" },
+      { fn: "\\tanh^{-1}x", key: "1/1-x2-xlt1", ans: "\\dfrac{1}{1-x^2}, \\ |x|<1" },
+      { fn: "\\coth^{-1}x", key: "1/1-x2-xgt1", ans: "\\dfrac{1}{1-x^2}, \\ |x|>1" },
+      { fn: "\\operatorname{sech}^{-1}x", key: "-1/xsqrt1-x2", ans: "-\\dfrac{1}{x\\sqrt{1-x^2}}" },
+      { fn: "\\operatorname{csch}^{-1}x", key: "-1/absxsqrtx2+1", ans: "-\\dfrac{1}{|x|\\sqrt{x^2+1}}" },
     ],
   },
 ];

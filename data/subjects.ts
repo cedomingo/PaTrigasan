@@ -7,6 +7,10 @@ import {
   integralsCategories,
   integralsQuestionBanks,
 } from "./questions/integrals";
+import {
+  domainRangeCategories,
+  domainRangeQuestionBanks,
+} from "./questions/domain-range";
 
 /**
  * Registration point for every subject in the app.
@@ -21,10 +25,17 @@ import {
  * through the functions in this file.
  */
 
-const categoryModules: Category[][] = [derivativesCategories, integralsCategories];
+const categoryModules: Category[][] = [
+  domainRangeCategories,
+  derivativesCategories,
+  integralsCategories,
+  
+];
 const questionBankModules: CategoryQuestionBank[][] = [
+  domainRangeQuestionBanks,
   derivativesQuestionBanks,
   integralsQuestionBanks,
+
 ];
 
 /** Flat list of every category across every subject. */
