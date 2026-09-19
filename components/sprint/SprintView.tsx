@@ -313,10 +313,13 @@ export default function SprintView({
     return "dim";
   }
 
+  // Narrower card inset on phones (`p-5`, not `p-8`): the difference is width
+  // the asked function (display math, at text-4xl) and the answer options
+  // would otherwise have to be scaled down into. See MathText.
   return (
     <div className="min-h-[36rem]">
         {phase === "playing" && question && (
-          <Card className="h-full p-8 sm:p-10">
+          <Card className="h-full p-5 sm:p-10">
             <SprintHUD score={score} secondsLeft={secondsLeft} qPercent={qPercent} />
 
             <div className="mt-8">
@@ -376,7 +379,7 @@ export default function SprintView({
         )}
 
         {phase === "ended" && (
-          <Card className="h-full p-8 sm:p-10">
+          <Card className="h-full p-5 sm:p-10">
             <SprintResults
               score={score}
               previousBest={previousBest}

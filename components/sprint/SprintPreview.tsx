@@ -168,8 +168,10 @@ export default function SprintPreview({
   const question = initial.question;
   if (!question) return null;
 
+  // Narrower inset on phones: the difference is width the asked function
+  // (display math, text-4xl) would otherwise have to be scaled down into.
   return (
-    <Card className="min-h-[36rem] p-8 sm:p-10">
+    <Card className="min-h-[36rem] p-5 sm:p-10">
       <SprintHUD score={PREVIEW_SCORE} secondsLeft={PREVIEW_SECONDS} qPercent={100} />
 
       <div className="mt-8">
