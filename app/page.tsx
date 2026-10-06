@@ -316,7 +316,7 @@ export default function Home() {
                     viewport-aware, so it no longer needs a 36rem floor to hold its
                     shape — a floor only ever pushed the Next button under the fold
                     on screens shorter than 36rem plus the toolbar. */}
-                <div className="h-[calc(var(--flashcard-face-h)+14px)]">
+                <div className="h-[calc(var(--flashcard-face-h)+0.875rem)]">
                   <FlashcardStack
                     cards={visibleCards}
                     flipped={flipped}
