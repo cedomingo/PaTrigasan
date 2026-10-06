@@ -307,17 +307,6 @@ export default function Home() {
                   </span>
                 </div>
 
-<<<<<<< HEAD
-                {/* Fixed height, matching FlashcardCard's own h-[22.5rem] — mirrors
-                    Sprint's plain block-flow sizing instead of flex-grow, so this
-                    card's total height is driven by real content (floored at
-                    min-h-[36rem]) exactly like Sprint's, rather than being forced
-                    to exactly 36rem regardless of Sprint's actual rendered height.
-                    In rem (374px at the 16px root), not px, so the stair-step of
-                    cards behind the top one keeps its proportions when the text
-                    size is scaled up — see the note on cardFaceClass. */}
-                <div className="h-[23.375rem]">
-=======
                 {/* FlashcardCard's own face height plus the 14px of headroom the
                     stacked deck behind it needs (offset y:18 / scale 0.94). Both
                     come from the same viewport-aware token, so the stack stays
@@ -328,7 +317,6 @@ export default function Home() {
                     shape — a floor only ever pushed the Next button under the fold
                     on screens shorter than 36rem plus the toolbar. */}
                 <div className="h-[calc(var(--flashcard-face-h)+14px)]">
->>>>>>> b98ec85fd6a97595736fa23de11d6da4dc027686
                   <FlashcardStack
                     cards={visibleCards}
                     flipped={flipped}

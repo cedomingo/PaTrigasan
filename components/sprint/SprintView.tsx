@@ -322,18 +322,13 @@ export default function SprintView({
     // restored at the sm breakpoint.
     <div className="sm:min-h-[36rem]">
         {phase === "playing" && question && (
-<<<<<<< HEAD
-          <Card className="h-full p-8 sm:p-10">
+          <Card className="h-full p-5 sm:p-10">
             <SprintHUD
               score={score}
               secondsLeft={secondsLeft}
               timerKey={questionSeq}
               onExpire={handleQuestionExpire}
             />
-=======
-          <Card className="h-full p-5 sm:p-10">
-            <SprintHUD score={score} secondsLeft={secondsLeft} qPercent={qPercent} />
->>>>>>> b98ec85fd6a97595736fa23de11d6da4dc027686
 
             <div className="mt-8">
               <SectionLabel underline>
