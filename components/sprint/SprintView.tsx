@@ -313,12 +313,16 @@ export default function SprintView({
     return "dim";
   }
 
+  // Narrower card inset on phones (`p-5`, not `p-8`): the difference is width
+  // the asked function (display math, at text-4xl) and the answer options
+  // would otherwise have to be scaled down into. See MathText.
   return (
     // Mobile keeps the height content-driven: a 36rem floor put the results
     // screen's "Play again" below the fold on a phone. The desktop floor is
     // restored at the sm breakpoint.
     <div className="sm:min-h-[36rem]">
         {phase === "playing" && question && (
+<<<<<<< HEAD
           <Card className="h-full p-8 sm:p-10">
             <SprintHUD
               score={score}
@@ -326,6 +330,10 @@ export default function SprintView({
               timerKey={questionSeq}
               onExpire={handleQuestionExpire}
             />
+=======
+          <Card className="h-full p-5 sm:p-10">
+            <SprintHUD score={score} secondsLeft={secondsLeft} qPercent={qPercent} />
+>>>>>>> b98ec85fd6a97595736fa23de11d6da4dc027686
 
             <div className="mt-8">
               <SectionLabel underline>
@@ -384,7 +392,7 @@ export default function SprintView({
         )}
 
         {phase === "ended" && (
-          <Card className="h-full p-8 sm:p-10">
+          <Card className="h-full p-5 sm:p-10">
             <SprintResults
               score={score}
               previousBest={previousBest}

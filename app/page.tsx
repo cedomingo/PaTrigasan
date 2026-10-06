@@ -38,7 +38,7 @@ import FlashcardStack from "@/components/flashcards/FlashcardStack";
 const SprintPreview = dynamic(() => import("@/components/sprint/SprintPreview"), {
   ssr: false,
   loading: () => (
-    <Card className="min-h-[36rem] p-8 sm:p-10">
+    <Card className="min-h-[36rem] p-5 sm:p-10">
       <p className="font-sans text-sm text-text-muted">Loading question…</p>
     </Card>
   ),
@@ -294,7 +294,10 @@ export default function Home() {
       {/* Practice flashcards — same card wrapper as sprint for visual consistency */}
       {activeTab === "practice" && selectedIds.size > 0 && (
         <section className="mx-auto mt-5 max-w-2xl px-6">
-          <Card className="min-h-[36rem] p-8 sm:p-10">
+          {/* Narrower inset on phones: the card's own padding is width the
+              long set-builder answers would otherwise have to be scaled down
+              into (see MathText). */}
+          <Card className="p-5 sm:p-10">
             {total > 0 ? (
               <>
                 <div className="mb-4 flex items-center justify-between">
@@ -304,6 +307,7 @@ export default function Home() {
                   </span>
                 </div>
 
+<<<<<<< HEAD
                 {/* Fixed height, matching FlashcardCard's own h-[22.5rem] — mirrors
                     Sprint's plain block-flow sizing instead of flex-grow, so this
                     card's total height is driven by real content (floored at
@@ -313,6 +317,18 @@ export default function Home() {
                     cards behind the top one keeps its proportions when the text
                     size is scaled up — see the note on cardFaceClass. */}
                 <div className="h-[23.375rem]">
+=======
+                {/* FlashcardCard's own face height plus the 14px of headroom the
+                    stacked deck behind it needs (offset y:18 / scale 0.94). Both
+                    come from the same viewport-aware token, so the stack stays
+                    proportional when the face shrinks on short screens. Plain
+                    block-flow sizing rather than flex-grow, mirroring Sprint: the
+                    card's height is driven by real content, and that content is
+                    viewport-aware, so it no longer needs a 36rem floor to hold its
+                    shape — a floor only ever pushed the Next button under the fold
+                    on screens shorter than 36rem plus the toolbar. */}
+                <div className="h-[calc(var(--flashcard-face-h)+14px)]">
+>>>>>>> b98ec85fd6a97595736fa23de11d6da4dc027686
                   <FlashcardStack
                     cards={visibleCards}
                     flipped={flipped}
@@ -321,7 +337,7 @@ export default function Home() {
                   />
                 </div>
 
-                <Divider className="my-8" />
+                <Divider className="my-5 sm:my-8" />
 
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   <Button variant="secondary" onClick={() => advance("previous")}>

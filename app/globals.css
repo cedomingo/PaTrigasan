@@ -48,6 +48,37 @@
   /* Shadows — always subtle, never heavy */
   --shadow-card: 0 1px 2px rgba(30, 58, 95, 0.04), 0 2px 8px rgba(30, 58, 95, 0.05);
   --shadow-card-hover: 0 2px 4px rgba(30, 58, 95, 0.06), 0 6px 16px rgba(30, 58, 95, 0.08);
+
+  /* Layout */
+  /*
+   * Flashcard face height. 22.5rem on roomy screens, but a practice card is
+   * a fixed face plus a fixed amount of chrome around it — the top offset and
+   * mode toolbar (6.9rem), the card's own padding, the topic header, the
+   * divider and the action buttons, 14.5rem of it on phones where those
+   * buttons wrap onto two rows — so a fixed face needs a 44rem-tall (704px)
+   * viewport to fit. Below that the face has to give way, or the Next button
+   * ends up under the fold, which is what it did on phones: a 22.5rem face
+   * needs 704px of viewport but an iPhone SE only has 667, and a small
+   * Android only 640. `dvh` rather than `vh` so it follows mobile browser
+   * chrome as the URL bar collapses. 11.5rem is the floor: below it the slot
+   * left for the formula is shorter than the tallest construct in the bank
+   * (a fraction with a radical, ~2.7em at `text-4xl`), and below that the card
+   * scrolls again instead of cropping the math — the better trade on a
+   * landscape phone or a very short window.
+   */
+  --flashcard-face-h: clamp(11.5rem, calc(100dvh - 23rem), 22.5rem);
+}
+
+/*
+ * From `sm:` up the practice card gets roomier padding (p-10) and a wider
+ * divider margin (my-8) but its four action buttons fit on a single row, so
+ * less of the viewport is spoken for and the face can claim more of it. The
+ * cap is unchanged — the face only ever grows back to 22.5rem.
+ */
+@media (min-width: 40rem) {
+  :root {
+    --flashcard-face-h: clamp(11.5rem, calc(100dvh - 23.5rem), 22.5rem);
+  }
 }
 
 @theme inline {
@@ -75,6 +106,21 @@
 
   --shadow-card: var(--shadow-card);
   --shadow-card-hover: var(--shadow-card-hover);
+}
+
+/*
+ * KaTeX's display block carries 1em of margin above and below — 2.25rem each
+ * way at the `text-4xl` the flashcard formula and the Sprint question use.
+ * MathText centres display math itself and the surrounding flex layout spaces
+ * it from the copy, so that margin is dead space: it makes the formula's box
+ * 4.5rem taller than the formula, which the flashcard's slot then has to
+ * reserve room for (cramping it on short screens for no reason) and which
+ * pushes the Sprint question row's centring off. Zeroing it here — after the
+ * KaTeX stylesheet import above, so this rule wins — leaves that slot sized
+ * for the glyphs themselves.
+ */
+.katex-display {
+  margin: 0;
 }
 
 html,
