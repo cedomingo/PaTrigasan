@@ -70,14 +70,15 @@
 }
 
 /*
- * From `sm:` up the practice card gets roomier padding (p-10) and a wider
- * divider margin (my-8) but its four action buttons fit on a single row, so
- * less of the viewport is spoken for and the face can claim more of it. The
- * cap is unchanged — the face only ever grows back to 22.5rem.
+ * From `sm:` up (tablets, laptops, desktops) the face is a fixed 22.5rem
+ * again, exactly as before the mobile pass: a rem height that scales with
+ * the browser's text size, and the same card on every window height. Only
+ * phones, where the Next button really can fall below the fold, get the
+ * viewport-aware clamp above.
  */
 @media (min-width: 40rem) {
   :root {
-    --flashcard-face-h: clamp(11.5rem, calc(100dvh - 23.5rem), 22.5rem);
+    --flashcard-face-h: 22.5rem;
   }
 }
 
