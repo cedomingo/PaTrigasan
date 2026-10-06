@@ -220,6 +220,11 @@ export default function Home() {
         return;
       }
 
+      // Same rule as the sprint shortcuts: a held modifier suppresses the
+      // shortcut, so browser chords (Ctrl+C, Ctrl+A, Ctrl+D, …) never drive
+      // the deck.
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
       const key = e.key.toLowerCase();
       if (key === "a" || key === "arrowleft") {
         e.preventDefault();
@@ -299,12 +304,15 @@ export default function Home() {
                   </span>
                 </div>
 
-                {/* Fixed height, matching FlashcardCard's own h-[360px] — mirrors
+                {/* Fixed height, matching FlashcardCard's own h-[22.5rem] — mirrors
                     Sprint's plain block-flow sizing instead of flex-grow, so this
                     card's total height is driven by real content (floored at
                     min-h-[36rem]) exactly like Sprint's, rather than being forced
-                    to exactly 36rem regardless of Sprint's actual rendered height. */}
-                <div className="h-[374px]">
+                    to exactly 36rem regardless of Sprint's actual rendered height.
+                    In rem (374px at the 16px root), not px, so the stair-step of
+                    cards behind the top one keeps its proportions when the text
+                    size is scaled up — see the note on cardFaceClass. */}
+                <div className="h-[23.375rem]">
                   <FlashcardStack
                     cards={visibleCards}
                     flipped={flipped}

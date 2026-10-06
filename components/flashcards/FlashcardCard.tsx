@@ -13,8 +13,17 @@ interface FlashcardCardProps {
   contentVisible?: boolean;
 }
 
+/**
+ * The face is a fixed *rem* height, not pixels, so it scales with the
+ * root font size exactly like every other fixed dimension in the app
+ * (AnswerOption's h-16, its h-24 math slot, min-h-[36rem] on the Sprint
+ * card). With `px` the box stayed put while the text inside it grew — at
+ * a larger browser font size / text-only zoom the card's prompt, math and
+ * "Tap to reveal" caption were squeezed together and eventually spilled
+ * out of the card, while the all-rem Sprint card scaled cleanly.
+ */
 const cardFaceClass =
-  "flex h-[360px] w-full flex-col items-center px-10 pt-2 pb-2 text-center [backface-visibility:hidden]";
+  "flex h-[22.5rem] w-full flex-col items-center px-10 pt-2 pb-2 text-center [backface-visibility:hidden]";
 const cardContentClass = "flex w-full flex-1 flex-col items-center";
 
 export default function FlashcardCard({

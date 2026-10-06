@@ -141,9 +141,15 @@ export default function SprintPreview({
       ) {
         return;
       }
-      const key = e.key.toUpperCase();
-      if (key.startsWith("ARROW")) return;
-      const index = key.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+      // Only a plain single-character key counts as an answer. Modifier and
+      // navigation keys have multi-character `e.key` values ("Control",
+      // "Backspace", "ArrowLeft") whose first letter used to be scored as an
+      // answer: pressing Ctrl picked C, Alt picked A, Backspace B, Delete D,
+      // and Ctrl+C/Ctrl+A answered C/A. A held modifier suppresses the
+      // shortcut entirely, so browser chords (Ctrl+C, Ctrl+A, …) stay inert.
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.length !== 1) return;
+      const index = e.key.toUpperCase().charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
       if (index < 0 || index >= initial.question.options.length) return;
       selectAnswer(initial.question.options[index].key);
     }

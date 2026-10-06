@@ -16,10 +16,11 @@ import SprintResults from "./SprintResults";
 /**
  * Sprint mode — a full-screen view-state swap (no route change), ported
  * from the original Derivative Sprint's game loop:
- *   - 60s total run timer, ticking every 100ms.
- *   - 5s per-question countdown, ticking every 40ms (tracked as an elapsed
- *     tick count rather than wall-clock time, so the loop never reaches for
- *     an impure timing API mid-component); auto-reveals as a miss if time
+ *   - 60s total run timer, ticking every 100ms but deriving the remaining
+ *     time from the wall clock — the run lasts 60 real seconds rather than
+ *     however long a pile of accumulated ticks ends up taking.
+ *   - 5s per-question countdown owned by QuestionTimerBar (wall-clock via
+ *     requestAnimationFrame); it calls back to auto-reveal as a miss if time
  *     runs out before an answer is chosen.
  *   - Same scoring curve: +10, plus +2 per streak point up to a +10 cap
  *     (i.e. 10 + min(streak, 5) * 2).
@@ -32,8 +33,7 @@ import SprintResults from "./SprintResults";
  */
 
 const TOTAL_MS = 60_000;
-const Q_MS = 5_000;
-const Q_TICK_MS = 40;
+/** How often the run clock re-reads the wall clock (and repaints the seconds). */
 const TOTAL_TICK_MS = 100;
 /** Answers landing under this land in the "fast" pitch-raising window. */
 const FAST_ANSWER_MS = 2_500;
@@ -103,7 +103,9 @@ export default function SprintView({
   const [answer, setAnswer] = useState<RevealedAnswer | null>(null);
   const [score, setScore] = useState(handoff?.score ?? 0);
   const [secondsLeft, setSecondsLeft] = useState(60);
-  const [qPercent, setQPercent] = useState(100);
+  // Bumped on every new question. QuestionTimerBar is keyed on it, so a fresh
+  // question remounts the bar and restarts its 5s countdown.
+  const [questionSeq, setQuestionSeq] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [correctCount, setCorrectCount] = useState(0);
   const [missedCount, setMissedCount] = useState(0);
@@ -123,11 +125,9 @@ export default function SprintView({
   // these are read during render, only from effects/handlers/timers.
   const queueRef = useRef<SprintQuestion[]>(initialRun.queue);
   const qIndexRef = useRef(handoff?.nextIndex ?? 0);
-  const qElapsedRef = useRef(0);
   const streakRef = useRef(handoff?.streak ?? 0);
   const totalTimeLeftRef = useRef(TOTAL_MS);
   const totalTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const qTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answeredRef = useRef(false);
   const endedRef = useRef(false);
@@ -135,32 +135,29 @@ export default function SprintView({
 
   function clearTimers() {
     if (totalTimerRef.current) clearInterval(totalTimerRef.current);
-    if (qTimerRef.current) clearInterval(qTimerRef.current);
     if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
   }
 
   function startTotalTimer() {
+    const startedAt = performance.now();
     totalTimerRef.current = setInterval(() => {
-      totalTimeLeftRef.current -= TOTAL_TICK_MS;
-      setSecondsLeft(Math.max(0, Math.ceil(totalTimeLeftRef.current / 1000)));
-      if (totalTimeLeftRef.current <= 0) {
+      const remaining = Math.max(0, TOTAL_MS - (performance.now() - startedAt));
+      totalTimeLeftRef.current = remaining;
+      setSecondsLeft(Math.ceil(remaining / 1000));
+      if (remaining <= 0) {
         endGame();
       }
     }, TOTAL_TICK_MS);
   }
 
-  /** Starts the 5s countdown for whichever question is currently in state. */
-  function startQuestionTimer(q: SprintQuestion) {
-    qElapsedRef.current = 0;
-    if (qTimerRef.current) clearInterval(qTimerRef.current);
-    qTimerRef.current = setInterval(() => {
-      qElapsedRef.current += Q_TICK_MS;
-      const pct = Math.max(0, 100 - (qElapsedRef.current / Q_MS) * 100);
-      setQPercent(pct);
-      if (qElapsedRef.current >= Q_MS && !answeredRef.current) {
-        revealAnswer(q.correctKey, null);
-      }
-    }, Q_TICK_MS);
+  /**
+   * QuestionTimerBar's only callback: a question's 5s ran out with nothing
+   * answered, so the miss is revealed through the same path a wrong pick uses.
+   * A question already answered (or ended) is left alone.
+   */
+  function handleQuestionExpire() {
+    if (answeredRef.current || !question) return;
+    revealAnswer(question.correctKey, null);
   }
 
   function endGame() {
@@ -185,9 +182,7 @@ export default function SprintView({
     setQuestion(q);
     setAnswer(null);
     setStatusMessage("");
-    setQPercent(100);
-
-    startQuestionTimer(q);
+    setQuestionSeq((n) => n + 1);
   }
 
   function revealAnswer(correctKey: string, chosenKey: string | null) {
@@ -251,7 +246,7 @@ export default function SprintView({
     setQuestion(run.question);
     setAnswer(null);
     setStatusMessage("");
-    setQPercent(100);
+    setQuestionSeq((n) => n + 1);
     setScore(0);
     setCorrectCount(0);
     setMissedCount(0);
@@ -259,16 +254,21 @@ export default function SprintView({
     setSecondsLeft(60);
 
     startTotalTimer();
-    if (run.question) startQuestionTimer(run.question);
   }
 
   // Keyboard shortcuts: A/B/C/D map to options 1–4
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (phase !== "playing" || !question || answeredRef.current) return;
-      const key = e.key.toUpperCase();
-      if (key.startsWith("ARROW")) return;
-      const index = key.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+      // Only a plain single-character key counts as an answer. Modifier and
+      // navigation keys have multi-character `e.key` values ("Control",
+      // "Backspace", "ArrowLeft") whose first letter used to be scored as an
+      // answer: pressing Ctrl picked C, Alt picked A, Backspace B, Delete D,
+      // and Ctrl+C/Ctrl+A answered C/A. A held modifier suppresses the
+      // shortcut entirely, so browser chords (Ctrl+C, Ctrl+A, …) stay inert.
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.length !== 1) return;
+      const index = e.key.toUpperCase().charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
       if (index < 0 || index >= question.options.length) return;
       const opt = question.options[index];
       selectAnswer(opt.key, question.correctKey);
@@ -278,13 +278,13 @@ export default function SprintView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, question]);
 
-  // Mount-only: start the two interval subscriptions for the run that was
-  // already seeded synchronously above — no setState call happens directly
-  // in this effect body, only inside the interval/timeout callbacks it sets
-  // up (which is the pattern React's docs recommend for effects).
+  // Mount-only: start the run clock for the state that was already seeded
+  // synchronously above — no setState call happens directly in this effect
+  // body, only inside the interval callback it sets up (which is the pattern
+  // React's docs recommend for effects). The per-question countdown starts
+  // itself inside QuestionTimerBar.
   useEffect(() => {
     startTotalTimer();
-    if (initialRun.question) startQuestionTimer(initialRun.question);
     return () => clearTimers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -314,10 +314,18 @@ export default function SprintView({
   }
 
   return (
-    <div className="min-h-[36rem]">
+    // Mobile keeps the height content-driven: a 36rem floor put the results
+    // screen's "Play again" below the fold on a phone. The desktop floor is
+    // restored at the sm breakpoint.
+    <div className="sm:min-h-[36rem]">
         {phase === "playing" && question && (
           <Card className="h-full p-8 sm:p-10">
-            <SprintHUD score={score} secondsLeft={secondsLeft} qPercent={qPercent} />
+            <SprintHUD
+              score={score}
+              secondsLeft={secondsLeft}
+              timerKey={questionSeq}
+              onExpire={handleQuestionExpire}
+            />
 
             <div className="mt-8">
               <SectionLabel underline>

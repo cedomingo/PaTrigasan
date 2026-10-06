@@ -1,8 +1,18 @@
+import QuestionTimerBar from "./QuestionTimerBar";
+
 interface SprintHUDProps {
   score: number;
   secondsLeft: number;
-  /** 0–100, the current question's remaining time as a percentage of Q_MS. */
-  qPercent: number;
+  /**
+   * Frozen question-bar fill 0–100, for the pre-start preview where no
+   * countdown is running. Omit it in a live run and pass `timerKey` /
+   * `onExpire` instead.
+   */
+  qPercent?: number;
+  /** Live countdown: change this to start a fresh question's 5s. */
+  timerKey?: string | number;
+  /** Live countdown: called once when the question's time runs out. */
+  onExpire?: () => void;
 }
 
 /**
@@ -12,9 +22,13 @@ interface SprintHUDProps {
  * clock. The bar shifts from navy to the wrong-tone red under 25% remaining,
  * porting the original's urgency cue without the neon styling.
  */
-export default function SprintHUD({ score, secondsLeft, qPercent }: SprintHUDProps) {
-  const low = qPercent < 25;
-
+export default function SprintHUD({
+  score,
+  secondsLeft,
+  qPercent,
+  timerKey,
+  onExpire,
+}: SprintHUDProps) {
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -32,19 +46,11 @@ export default function SprintHUD({ score, secondsLeft, qPercent }: SprintHUDPro
         </div>
       </div>
 
-      <div
-        role="progressbar"
-        aria-label="Time remaining for this question"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(qPercent)}
-        className="mt-4 h-1.5 overflow-hidden rounded-sm bg-blue-faint"
-      >
-        <div
-          className={`h-full rounded-sm ${low ? "bg-wrong" : "bg-navy"}`}
-          style={{ width: `${qPercent}%` }}
-        />
-      </div>
+      {qPercent !== undefined ? (
+        <QuestionTimerBar percent={qPercent} />
+      ) : (
+        <QuestionTimerBar key={timerKey} onExpire={onExpire} />
+      )}
     </div>
   );
 }

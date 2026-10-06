@@ -120,7 +120,7 @@ export default function LeaderboardTable({
         variant="default"
         className={`flex ${PANEL_HEIGHT_CLASS} flex-col items-center justify-center gap-1 text-center`}
       >
-        <p className="font-serif text-lg text-navy">No runs yet — be the first!</p>
+        <p className="font-serif text-lg text-navy">No runs yet!</p>
       </Card>
     );
   }
