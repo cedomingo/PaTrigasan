@@ -16,7 +16,10 @@ import {
   domainRangeCategories,
   domainRangeQuestionBanks,
 } from "./questions/domain-range";
-
+import {
+  unitCircleCategories,
+  unitCircleQuestionBanks,
+} from "./questions/unit-circle";
 /**
  * Registration point for every subject in the app.
  *
@@ -31,12 +34,14 @@ import {
  */
 
 const categoryModules: Category[][] = [
+  unitCircleCategories,
   domainRangeCategories,
   derivativesCategories,
   integralsCategories,
-  
+
 ];
 const questionBankModules: CategoryQuestionBank[][] = [
+  unitCircleQuestionBanks,
   domainRangeQuestionBanks,
   derivativesQuestionBanks,
   integralsQuestionBanks,

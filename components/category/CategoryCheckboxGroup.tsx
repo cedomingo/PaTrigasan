@@ -53,7 +53,7 @@ export default function CategoryCheckboxGroup({
   onToggleKind,
 }: CategoryCheckboxGroupProps) {
   return (
-    <div className={compact ? "space-y-4" : "space-y-8"}>
+    <div className={compact ? "space-y-4" : "space-y-6"}>
       {subjects.map((subject) => {
         const subjectKinds = compact ? [] : getSubjectKinds(subject.id);
         const splitHeading = kinds && onToggleKind && subjectKinds.length > 0;
@@ -61,7 +61,7 @@ export default function CategoryCheckboxGroup({
         return (
           <fieldset key={subject.id}>
             {!compact && (
-              <legend className={`mb-3 ${headingClass}`}>
+              <legend className={`mb-2 ${headingClass}`}>
                 {splitHeading
                   ? subjectKinds.map((kind, i) => {
                       const checked = kinds.has(kind);
@@ -91,33 +91,29 @@ export default function CategoryCheckboxGroup({
                   : subject.name}
               </legend>
             )}
-            <div
-              className={`grid gap-3 ${
-                compact ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-3"
-              }`}
-            >
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {subject.categories.map((category) => {
                 const checked = selectedIds.has(category.id);
                 const isLastSelected = checked && selectedIds.size === 1;
                 return (
                   <label
                     key={category.id}
-                    className={`flex items-center gap-3 rounded-md border p-4 transition-colors duration-150 ${
+                    className={`flex items-center gap-2 rounded-md border px-2.5 py-2 transition-colors duration-150 ${
                       isLastSelected
                         ? "cursor-not-allowed border-navy bg-blue-faint opacity-50"
                         : checked
                           ? "cursor-pointer border-navy bg-blue-faint"
                           : "cursor-pointer border-border bg-white hover:bg-blue-faint hover:border-blue-medium"
-                    } ${compact ? "p-3" : ""}`}
+                    }`}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       disabled={isLastSelected}
                       onChange={() => onToggle(category.id)}
-                      className="h-4 w-4 shrink-0 accent-[var(--color-navy)]"
+                      className="h-3.5 w-3.5 shrink-0 accent-[var(--color-navy)]"
                     />
-                    <span className="font-sans text-sm text-text">{category.label}</span>
+                    <span className="font-sans text-xs text-text">{category.label}</span>
                   </label>
                 );
               })}
