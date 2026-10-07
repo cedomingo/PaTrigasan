@@ -2,6 +2,7 @@
 
 import { AnimatePresence, MotionConfig, motion, useMotionValue, useTransform } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import type { QuestionKind } from "@/types";
 import FlashcardCard from "./FlashcardCard";
 
 const ADVANCE_THRESHOLD = 80;
@@ -12,6 +13,9 @@ const REVEAL_HOLD_MS = 320;
 
 interface StackCard {
   id: number;
+  categoryId: string;
+  /** Facet the card asks about, when its subject is split by one. */
+  kind?: QuestionKind;
   categoryLabel: string;
   prompt: string;
   answer: string;
@@ -167,6 +171,8 @@ function StackedCard({
       className={`absolute inset-0 ${draggable ? "cursor-grab active:cursor-grabbing" : "pointer-events-none"}`}
     >
       <FlashcardCard
+        categoryId={card.categoryId}
+        kind={card.kind}
         categoryLabel={card.categoryLabel}
         prompt={card.prompt}
         answer={card.answer}

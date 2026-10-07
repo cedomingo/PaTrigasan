@@ -112,6 +112,46 @@ export function getSubjectKinds(subjectId: string): QuestionKind[] {
   return KIND_ORDER.filter((kind) => present.has(kind));
 }
 
+/**
+ * Wording shown above a question, keyed by subject id (the ids live in
+ * /data/questions/*.ts). Only subjects whose prompt can't be read as a
+ * derivative/integral prefix get an entry: Derivatives keep the default
+ * "D_x of:" and Integrals their "∫ of:", so neither appears here.
+ */
+export const SUBJECT_PROMPT_LABELS: Record<string, string> = {
+  "unit-circle": "Evaluate",
+};
+
+/**
+ * Wording for a subject that splits its questions by `kind` (Domain & Range).
+ * `kind` beats `SUBJECT_PROMPT_LABELS`, so a kind-split subject doesn't need
+ * an entry in both maps — the kind alone says which fact is being asked.
+ */
+export const KIND_PROMPT_LABELS: Record<QuestionKind, string> = {
+  domain: "Domain of:",
+  range: "Range of:",
+};
+
+/**
+ * The wording to show above a question, or undefined when the subject keeps
+ * its default prefix. `kind` wins when the item is tagged with one — a
+ * domain/range question is addressed as much by "Domain of:" as by the
+ * expression itself — otherwise the answer comes from the category's
+ * subject. Unknown category ids return undefined rather than guessing.
+ */
+export function getPromptLabel(
+  categoryId: string,
+  kind?: QuestionKind
+): string | undefined {
+  if (kind) return KIND_PROMPT_LABELS[kind];
+
+  const subjectId = getAllCategories().find(
+    (category) => category.id === categoryId
+  )?.subjectId;
+
+  return subjectId ? SUBJECT_PROMPT_LABELS[subjectId] : undefined;
+}
+
 /** Every category id currently available, sorted — the canonical "full mix" set for leaderboard queries. */
 export function getAllCategoryIdsSorted(): string[] {
   return getAllCategories()

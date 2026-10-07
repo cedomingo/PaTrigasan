@@ -17,6 +17,12 @@ import { getAllQuestionBanks } from "@/data";
 export interface SprintQuestion {
   categoryId: string;
   fn: string;
+  /**
+   * The item's facet, carried through so the card can label the question
+   * ("Domain of:" / "Range of:") without the prompt having to spell the
+   * fact out — see getPromptLabel. Unset for subjects with no split.
+   */
+  kind?: QuestionKind;
   correctKey: string;
   /** Always includes the correct answer plus up to 3 same-category distractors, pre-shuffled. */
   options: { key: string; ans: string }[];
@@ -73,6 +79,7 @@ export function buildQuestionQueue(
       queue.push({
         categoryId: bank.categoryId,
         fn: item.fn,
+        kind: item.kind,
         correctKey: item.key,
         options,
       });

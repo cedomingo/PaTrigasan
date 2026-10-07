@@ -31,6 +31,8 @@ export default function FlashcardView({ categoryIds, onExit }: FlashcardViewProp
     const { categoryId, item } = deck[deckIndex];
     return {
       id: deckIndex,
+      categoryId,
+      kind: item.kind,
       categoryLabel: categoryLabels.get(categoryId) ?? "",
       prompt: item.fn,
       answer: item.ans,

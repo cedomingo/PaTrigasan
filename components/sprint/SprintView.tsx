@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Card, Divider, MathText, SectionLabel } from "@/components/ui";
+import { Card, Divider, MathText, PromptLabel, SectionLabel } from "@/components/ui";
 import { getAllCategories } from "@/data";
 import type { QuestionKind } from "@/types";
 import { buildQuestionQueue, type SprintHandoff, type SprintQuestion } from "@/lib/quiz-engine";
@@ -334,9 +334,11 @@ export default function SprintView({
               <SectionLabel underline>
                 {categoryLabels.get(question.categoryId) ?? ""}
               </SectionLabel>
-              <p className="mt-6 font-sans text-sm text-text-muted">
-                {question.categoryId.startsWith("integrals") ? "∫" : <>D<sub>x</sub></>} of:
-              </p>
+              <PromptLabel
+                categoryId={question.categoryId}
+                kind={question.kind}
+                className="mt-6 font-sans text-sm text-text-muted"
+              />
               {/*
                * Fixed-height slot for the asked function. A display-style
                * fraction (e.g. \dfrac{1}{x}) is ~2.25em of KaTeX leading —

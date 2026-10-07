@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from "react";
 import ReactCardFlip from "react-card-flip";
-import { Card, MathText, SectionLabel } from "@/components/ui";
+import { Card, MathText, PromptLabel, SectionLabel } from "@/components/ui";
+import type { QuestionKind } from "@/types";
 
 interface FlashcardCardProps {
+  categoryId: string;
+  /** Facet the card asks about, when its subject is split by one. */
+  kind?: QuestionKind;
   categoryLabel: string;
   prompt: string;
   answer: string;
@@ -37,12 +41,16 @@ const cardFormulaClass =
   "flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-6";
 
 export default function FlashcardCard({
+  categoryId,
+  kind,
   categoryLabel,
   prompt,
   answer,
   flipped,
   contentVisible = true,
 }: FlashcardCardProps) {
+  // The label wording (and its integral/derivative default) comes from
+  // PromptLabel, so the deck can't drift from what the Sprint card shows.
   const [reducedMotion, setReducedMotion] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -76,9 +84,11 @@ export default function FlashcardCard({
           </SectionLabel>
 
           <div className={cardFormulaClass}>
-            <p className="font-sans text-sm text-text-muted">
-              D<sub>x</sub> of:
-            </p>
+            <PromptLabel
+              categoryId={categoryId}
+              kind={kind}
+              className="font-sans text-sm text-text-muted"
+            />
             <MathText latex={prompt} display className="text-4xl" />
           </div>
 
@@ -96,9 +106,11 @@ export default function FlashcardCard({
           </SectionLabel>
 
           <div className={cardFormulaClass}>
-            <p className="font-sans text-sm text-text-muted opacity-0">
-              D<sub>x</sub> of:
-            </p>
+            <PromptLabel
+              categoryId={categoryId}
+              kind={kind}
+              className="font-sans text-sm text-text-muted opacity-0"
+            />
             <MathText latex={answer} display className="text-4xl" />
           </div>
 

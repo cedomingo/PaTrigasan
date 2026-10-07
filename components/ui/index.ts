@@ -4,4 +4,5 @@ export { default as Tag } from "./Tag";
 export { default as SectionLabel } from "./SectionLabel";
 export { default as Divider } from "./Divider";
 export { default as MathText } from "./MathText";
+export { default as PromptLabel } from "./PromptLabel";
 export { default as SegmentedControl } from "./SegmentedControl";

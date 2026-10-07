@@ -1,10 +1,16 @@
-import type { Category, CategoryQuestionBank } from "@/types";
+import type { Category, CategoryQuestionBank, QuestionKind } from "@/types";
 
 /**
  * "Domain & Range" subject. Categories are split by function family (like
  * derivatives.ts), and each category mixes both Domain and Range questions
- * for that family's functions — dom()/ran() prompts distinguish which fact
- * is being asked.
+ * for that family's functions.
+ *
+ * The prompt itself is just the expression (`\sin x`) — which fact is being
+ * asked is carried by the question's `kind` and rendered as the "Domain of:"
+ * / "Range of:" label above it, rather than by wrapping the expression in
+ * `\operatorname{dom}(...)` / `\operatorname{ran}(...)`. Stripping the
+ * wrapper is what makes the two facts share a prompt: "Domain of: sin x" and
+ * "Range of: sin x" are one expression asked two ways.
  */
 
 export const DOMAIN_RANGE_SUBJECT_ID = "domain-range";
@@ -44,59 +50,61 @@ export const domainRangeCategories: Category[] = [
 ];
 
 /**
- * Every prompt in this subject reads `\operatorname{dom}(...)` or
- * `\operatorname{ran}(...)`. Tagging each item once, here, lets the question
- * queue and the flashcard deck narrow by DOMAIN / RANGE without the quiz
- * engine having to parse LaTeX.
+ * Each item is tagged with the fact it asks about. Stated per item — rather
+ * than inferred from the prompt — because the prompt no longer mentions dom()
+ * or ran(): the tag is now the only record of which fact is being asked, and
+ * the DOMAIN / RANGE filter, the queue and the flashcard deck all read it
+ * without having to parse LaTeX.
  */
-const tagKind = (bank: CategoryQuestionBank): CategoryQuestionBank => ({
-  ...bank,
-  items: bank.items.map((item) => ({
-    ...item,
-    kind: item.fn.includes("\\operatorname{ran}") ? "range" : "domain",
-  })),
-});
+const DOMAIN: QuestionKind = "domain";
+const RANGE: QuestionKind = "range";
 
 export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
   {
     categoryId: "domain-range-trig",
     items: [
       // Domain
-      { fn: "\\operatorname{dom}(\\sin x)", key: "R", ans: "\\mathbb{R}" },
-      { fn: "\\operatorname{dom}(\\cos x)", key: "R", ans: "\\mathbb{R}" },
+      { fn: "\\sin x", kind: DOMAIN, key: "R", ans: "\\mathbb{R}" },
+      { fn: "\\cos x", kind: DOMAIN, key: "R", ans: "\\mathbb{R}" },
       {
-        fn: "\\operatorname{dom}(\\tan x)",
+        fn: "\\tan x",
+        kind: DOMAIN,
         key: "R-oddpi2",
         ans: "\\mathbb{R} - \\left\\{(2n+1)\\dfrac{\\pi}{2} : n \\in \\mathbb{Z}\\right\\}",
       },
       {
-        fn: "\\operatorname{dom}(\\cot x)",
+        fn: "\\cot x",
+        kind: DOMAIN,
         key: "R-npi",
         ans: "\\mathbb{R} - \\{n\\pi : n \\in \\mathbb{Z}\\}",
       },
       {
-        fn: "\\operatorname{dom}(\\sec x)",
+        fn: "\\sec x",
+        kind: DOMAIN,
         key: "R-oddpi2",
         ans: "\\mathbb{R} - \\left\\{(2n+1)\\dfrac{\\pi}{2} : n \\in \\mathbb{Z}\\right\\}",
       },
       {
-        fn: "\\operatorname{dom}(\\csc x)",
+        fn: "\\csc x",
+        kind: DOMAIN,
         key: "R-npi",
         ans: "\\mathbb{R} - \\{n\\pi : n \\in \\mathbb{Z}\\}",
       },
       // Range
-      { fn: "\\operatorname{ran}(\\sin x)", key: "[-1,1]", ans: "[-1, 1]" },
-      { fn: "\\operatorname{ran}(\\cos x)", key: "[-1,1]", ans: "[-1, 1]" },
+      { fn: "\\sin x", kind: RANGE, key: "[-1,1]", ans: "[-1, 1]" },
+      { fn: "\\cos x", kind: RANGE, key: "[-1,1]", ans: "[-1, 1]" },
       // Same answer as dom(sin x) / dom(cos x) above — shares key "R".
-      { fn: "\\operatorname{ran}(\\tan x)", key: "R", ans: "\\mathbb{R}" },
-      { fn: "\\operatorname{ran}(\\cot x)", key: "R", ans: "\\mathbb{R}" },
+      { fn: "\\tan x", kind: RANGE, key: "R", ans: "\\mathbb{R}" },
+      { fn: "\\cot x", kind: RANGE, key: "R", ans: "\\mathbb{R}" },
       {
-        fn: "\\operatorname{ran}(\\sec x)",
+        fn: "\\sec x",
+        kind: RANGE,
         key: "R-(-1,1)",
         ans: "\\mathbb{R} - (-1, 1)",
       },
       {
-        fn: "\\operatorname{ran}(\\csc x)",
+        fn: "\\csc x",
+        kind: RANGE,
         key: "R-(-1,1)",
         ans: "\\mathbb{R} - (-1, 1)",
       },
@@ -106,153 +114,200 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
     categoryId: "domain-range-logexp",
     items: [
       // Domain
-      { fn: "\\operatorname{dom}(\\ln x)", key: "(0,inf)", ans: "(0, \\infty)" },
+      { fn: "\\ln x", kind: DOMAIN, key: "(0,inf)", ans: "(0, \\infty)" },
       {
-        fn: "\\operatorname{dom}(\\ln|x|)",
+        fn: "\\ln|x|",
+        kind: DOMAIN,
         key: "(-inf,0)U(0,inf)",
         ans: "(-\\infty, 0) \\cup (0, \\infty)",
       },
+      // ln(-x) asks about the negative half-line, so its domain is the one
+      // answer in this family nothing else supplies. It earns its place twice
+      // over: the family's other answers are (0, ∞), ℝ and (-∞,0) ∪ (0,∞),
+      // which left every question picking from only three choices.
+      {
+        fn: "\\ln(-x)",
+        kind: DOMAIN,
+        key: "(-inf,0)",
+        ans: "(-\\infty, 0)",
+      },
       // Same answer as dom(ln x) above — shares key "(0,inf)".
       {
-        fn: "\\operatorname{dom}(\\log_a(x))",
+        fn: "\\log_a(x)",
+        kind: DOMAIN,
         key: "(0,inf)",
         ans: "(0, \\infty)",
       },
+      // The whole real line is written ℝ here, the all-real symbol the
+      // trigonometric families already use, rather than spelled out as
+      // (-∞, ∞).
       {
-        fn: "\\operatorname{dom}(a^x)",
+        fn: "a^x",
+        kind: DOMAIN,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       {
-        fn: "\\operatorname{dom}(e^x)",
+        fn: "e^x",
+        kind: DOMAIN,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       // Range
       // Same answer as dom(a^x) / dom(e^x) above — shares key "(-inf,inf)".
       {
-        fn: "\\operatorname{ran}(\\ln x)",
+        fn: "\\ln x",
+        kind: RANGE,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       {
-        fn: "\\operatorname{ran}(\\ln|x|)",
+        fn: "\\ln|x|",
+        kind: RANGE,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       {
-        fn: "\\operatorname{ran}(\\log_a(x))",
+        fn: "\\log_a(x)",
+        kind: RANGE,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       // Same answer as dom(ln x) / dom(log_a(x)) above — shares key "(0,inf)".
-      { fn: "\\operatorname{ran}(a^x)", key: "(0,inf)", ans: "(0, \\infty)" },
-      { fn: "\\operatorname{ran}(e^x)", key: "(0,inf)", ans: "(0, \\infty)" },
+      { fn: "a^x", kind: RANGE, key: "(0,inf)", ans: "(0, \\infty)" },
+      { fn: "e^x", kind: RANGE, key: "(0,inf)", ans: "(0, \\infty)" },
     ],
   },
   {
     categoryId: "domain-range-inverse-trig",
     items: [
       // Domain
-      { fn: "\\operatorname{dom}(\\sin^{-1}x)", key: "[-1,1]", ans: "[-1, 1]" },
-      { fn: "\\operatorname{dom}(\\cos^{-1}x)", key: "[-1,1]", ans: "[-1, 1]" },
+      { fn: "\\sin^{-1}x", kind: DOMAIN, key: "[-1,1]", ans: "[-1, 1]" },
+      { fn: "\\cos^{-1}x", kind: DOMAIN, key: "[-1,1]", ans: "[-1, 1]" },
       {
-        fn: "\\operatorname{dom}(\\tan^{-1}x)",
+        fn: "\\tan^{-1}x",
+        kind: DOMAIN,
         key: "(-inf,inf)",
         ans: "(-\\infty, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\cot^{-1}x)",
+        fn: "\\cot^{-1}x",
+        kind: DOMAIN,
         key: "(-inf,inf)",
         ans: "(-\\infty, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\csc^{-1}x)",
+        fn: "\\csc^{-1}x",
+        kind: DOMAIN,
         key: "(-inf,-1]U[1,inf)",
         ans: "(-\\infty, -1] \\cup [1, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\sec^{-1}x)",
+        fn: "\\sec^{-1}x",
+        kind: DOMAIN,
         key: "(-inf,-1]U[1,inf)",
         ans: "(-\\infty, -1] \\cup [1, \\infty)",
       },
       // Range
       {
-        fn: "\\operatorname{ran}(\\sin^{-1}x)",
+        fn: "\\sin^{-1}x",
+        kind: RANGE,
         key: "[-pi/2,pi/2]",
         ans: "\\left[-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right]",
       },
-      { fn: "\\operatorname{ran}(\\cos^{-1}x)", key: "[0,pi]", ans: "[0, \\pi]" },
       {
-        fn: "\\operatorname{ran}(\\tan^{-1}x)",
+        fn: "\\cos^{-1}x",
+        kind: RANGE,
+        key: "[0,pi]",
+        ans: "[0, \\pi]",
+      },
+      {
+        fn: "\\tan^{-1}x",
+        kind: RANGE,
         key: "(-pi/2,pi/2)",
         ans: "\\left(-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right)",
       },
       {
-        fn: "\\operatorname{ran}(\\csc^{-1}x)",
+        fn: "\\csc^{-1}x",
+        kind: RANGE,
         key: "[-pi/2,0)U(0,pi/2]",
         ans: "\\left[-\\dfrac{\\pi}{2}, 0\\right) \\cup \\left(0, \\dfrac{\\pi}{2}\\right]",
       },
       {
-        fn: "\\operatorname{ran}(\\sec^{-1}x)",
+        fn: "\\sec^{-1}x",
+        kind: RANGE,
         key: "[0,pi/2)U(pi/2,pi]",
         ans: "\\left[0, \\dfrac{\\pi}{2}\\right) \\cup \\left(\\dfrac{\\pi}{2}, \\pi\\right]",
       },
-      { fn: "\\operatorname{ran}(\\cot^{-1}x)", key: "(0,pi)", ans: "(0, \\pi)" },
+      {
+        fn: "\\cot^{-1}x",
+        kind: RANGE,
+        key: "(0,pi)",
+        ans: "(0, \\pi)",
+      },
     ],
   },
   {
     categoryId: "domain-range-hyperbolic",
     items: [
       // Domain
-      { fn: "\\operatorname{dom}(\\cosh x)", key: "[0,inf)", ans: "[0, \\infty)" },
+      { fn: "\\cosh x", kind: DOMAIN, key: "[0,inf)", ans: "[0, \\infty)" },
       {
-        fn: "\\operatorname{dom}(\\sinh x)",
+        fn: "\\sinh x",
+        kind: DOMAIN,
         key: "(-inf,inf)",
         ans: "(-\\infty, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\tanh x)",
+        fn: "\\tanh x",
+        kind: DOMAIN,
         key: "(-inf,inf)",
         ans: "(-\\infty, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\operatorname{sech} x)",
+        fn: "\\operatorname{sech} x",
+        kind: DOMAIN,
         key: "[0,inf)",
         ans: "[0, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\operatorname{csch} x)",
+        fn: "\\operatorname{csch} x",
+        kind: DOMAIN,
         key: "(-inf,0)U(0,inf)",
         ans: "(-\\infty, 0) \\cup (0, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\coth x)",
+        fn: "\\coth x",
+        kind: DOMAIN,
         key: "(-inf,0)U(0,inf)",
         ans: "(-\\infty, 0) \\cup (0, \\infty)",
       },
       // Range
-      { fn: "\\operatorname{ran}(\\cosh x)", key: "[1,inf)", ans: "[1, \\infty)" },
+      { fn: "\\cosh x", kind: RANGE, key: "[1,inf)", ans: "[1, \\infty)" },
       // Same answer as dom(sinh x) / dom(tanh x) above — shares key "(-inf,inf)".
       {
-        fn: "\\operatorname{ran}(\\sinh x)",
+        fn: "\\sinh x",
+        kind: RANGE,
         key: "(-inf,inf)",
         ans: "(-\\infty, \\infty)",
       },
-      { fn: "\\operatorname{ran}(\\tanh x)", key: "(-1,1)", ans: "(-1, 1)" },
+      { fn: "\\tanh x", kind: RANGE, key: "(-1,1)", ans: "(-1, 1)" },
       {
-        fn: "\\operatorname{ran}(\\operatorname{sech} x)",
+        fn: "\\operatorname{sech} x",
+        kind: RANGE,
         key: "(0,1]",
         ans: "(0, 1]",
       },
       // Same answer as dom(csch x) / dom(coth x) above — shares key "(-inf,0)U(0,inf)".
       {
-        fn: "\\operatorname{ran}(\\operatorname{csch} x)",
+        fn: "\\operatorname{csch} x",
+        kind: RANGE,
         key: "(-inf,0)U(0,inf)",
         ans: "(-\\infty, 0) \\cup (0, \\infty)",
       },
       {
-        fn: "\\operatorname{ran}(\\coth x)",
+        fn: "\\coth x",
+        kind: RANGE,
         key: "(-inf,-1)U(1,inf)",
         ans: "(-\\infty, -1) \\cup (1, \\infty)",
       },
@@ -263,69 +318,81 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
     items: [
       // Domain
       {
-        fn: "\\operatorname{dom}(\\cosh^{-1}x)",
+        fn: "\\cosh^{-1}x",
+        kind: DOMAIN,
         key: "[1,inf)",
         ans: "[1, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\sinh^{-1}x)",
+        fn: "\\sinh^{-1}x",
+        kind: DOMAIN,
         key: "(-inf,inf)",
         ans: "(-\\infty, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\tanh^{-1}x)",
+        fn: "\\tanh^{-1}x",
+        kind: DOMAIN,
         key: "(-1,1)",
         ans: "(-1, 1)",
       },
       {
-        fn: "\\operatorname{dom}(\\operatorname{sech}^{-1}x)",
+        fn: "\\operatorname{sech}^{-1}x",
+        kind: DOMAIN,
         key: "(0,1]",
         ans: "(0, 1]",
       },
       {
-        fn: "\\operatorname{dom}(\\operatorname{csch}^{-1}x)",
+        fn: "\\operatorname{csch}^{-1}x",
+        kind: DOMAIN,
         key: "(-inf,0)U(0,inf)",
         ans: "(-\\infty, 0) \\cup (0, \\infty)",
       },
       {
-        fn: "\\operatorname{dom}(\\coth^{-1}x)",
+        fn: "\\coth^{-1}x",
+        kind: DOMAIN,
         key: "(-inf,-1)U(1,inf)",
         ans: "(-\\infty, -1) \\cup (1, \\infty)",
       },
       // Range
       {
-        fn: "\\operatorname{ran}(\\cosh^{-1}x)",
+        fn: "\\cosh^{-1}x",
+        kind: RANGE,
         key: "[0,inf)",
         ans: "[0, \\infty)",
       },
       // Same answer as dom(sinh^-1 x) above — shares key "(-inf,inf)".
       {
-        fn: "\\operatorname{ran}(\\sinh^{-1}x)",
+        fn: "\\sinh^{-1}x",
+        kind: RANGE,
         key: "(-inf,inf)",
         ans: "(-\\infty, \\infty)",
       },
       {
-        fn: "\\operatorname{ran}(\\tanh^{-1}x)",
+        fn: "\\tanh^{-1}x",
+        kind: RANGE,
         key: "(-inf,inf)",
         ans: "(-\\infty, \\infty)",
       },
       // Same answer as ran(cosh^-1 x) above — shares key "[0,inf)".
       {
-        fn: "\\operatorname{ran}(\\operatorname{sech}^{-1}x)",
+        fn: "\\operatorname{sech}^{-1}x",
+        kind: RANGE,
         key: "[0,inf)",
         ans: "[0, \\infty)",
       },
       // Same answer as dom(csch^-1 x) above — shares key "(-inf,0)U(0,inf)".
       {
-        fn: "\\operatorname{ran}(\\operatorname{csch}^{-1}x)",
+        fn: "\\operatorname{csch}^{-1}x",
+        kind: RANGE,
         key: "(-inf,0)U(0,inf)",
         ans: "(-\\infty, 0) \\cup (0, \\infty)",
       },
       {
-        fn: "\\operatorname{ran}(\\coth^{-1}x)",
+        fn: "\\coth^{-1}x",
+        kind: RANGE,
         key: "(-inf,0)U(0,inf)",
         ans: "(-\\infty, 0) \\cup (0, \\infty)",
       },
     ],
   },
-].map(tagKind);
+];
