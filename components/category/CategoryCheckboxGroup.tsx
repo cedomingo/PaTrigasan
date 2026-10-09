@@ -110,61 +110,83 @@ export default function CategoryCheckboxGroup({
           <fieldset key={subject.id}>
             {!compact && (
               <legend className={`mb-2 ${headingClass}`}>
-                {splitHeading
-                  ? subjectKinds.map((kind, i) => {
-                      const checked = kinds.has(kind);
-                      // The last kind still on can't be switched off — one of
-                      // them is always live — so it reads as plain text.
-                      const locked = checked && kinds.size === 1;
-                      return (
-                        <Fragment key={kind}>
-                          {i > 0 ? " & " : null}
-                          <button
-                            type="button"
-                            role="checkbox"
-                            aria-checked={checked}
-                            aria-disabled={locked}
-                            onClick={() => {
-                              if (!locked) onToggleKind(kind);
-                            }}
-                            className={`border-0 bg-transparent p-0 ${headingClass} underline-offset-4 ${
-                              checked ? "underline" : ""
-                            } ${locked ? "cursor-default" : "cursor-pointer"}`}
-                          >
-                            {KIND_LABELS[kind]}
-                          </button>
-                        </Fragment>
-                      );
-                    })
-                  : subject.name}
                 {/*
-                 * Select-all / clear-all for this subject. The circle is a
-                 * styled span rather than the ● character so it can scale on
-                 * hover without reflowing the heading — a transform paints
-                 * outside the line box instead of growing it — and so it
-                 * takes the heading's own muted token. The button is sized to
-                 * the text line (h-4 = text-xs's line-height) so it adds no
-                 * height of its own. The label says what the click will do,
-                 * since "select all" and "clear all" share one control.
+                 * A centered flex row, not baseline alignment. The ● is a
+                 * 16px box — the heading's own line-height — and with
+                 * vertical-align: middle its centre landed on the text's
+                 * x-height, half a line below the centre of these uppercase
+                 * words. Centring every item on the line box instead puts the
+                 * dot level with the letters; it also keeps the dot level
+                 * with the DOMAIN / RANGE words on a kind-split heading,
+                 * which is the same row.
+                 *
+                 * Centring on the line box is close but not exact: the capital
+                 * band's centre sits about half a pixel below the line box's
+                 * centre at this size, which is what the nudge on the button
+                 * corrects for. Measured, not guessed — it is a sub-pixel
+                 * difference that is otherwise easy to chase in circles.
                  */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    applySubjectToggle(subjectIds, selectedIds, onToggle)
-                  }
-                  aria-label={`${
-                    subjectAllSelected ? "Clear" : "Select"
-                  } all ${subject.name} topics`}
-                  title={`${
-                    subjectAllSelected ? "Clear" : "Select"
-                  } all ${subject.name} topics`}
-                  className="group ml-1 inline-flex h-4 w-4 cursor-pointer items-center justify-center border-0 bg-transparent p-0 align-middle"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="block h-[0.4rem] w-[0.4rem] rounded-full bg-text-muted transition-transform duration-150 ease-out group-hover:scale-[1.8]"
-                  />
-                </button>
+                <span className="inline-flex items-center gap-1">
+                  {splitHeading
+                    ? subjectKinds.map((kind, i) => {
+                        const checked = kinds.has(kind);
+                        // The last kind still on can't be switched off — one
+                        // of them is always live — so it reads as plain text.
+                        const locked = checked && kinds.size === 1;
+                        return (
+                          <Fragment key={kind}>
+                            {/* Bare "&": the row's gap supplies the spacing,
+                                which flex would otherwise strip. */}
+                            {i > 0 ? <span>&amp;</span> : null}
+                            <button
+                              type="button"
+                              role="checkbox"
+                              aria-checked={checked}
+                              aria-disabled={locked}
+                              onClick={() => {
+                                if (!locked) onToggleKind(kind);
+                              }}
+                              className={`border-0 bg-transparent p-0 ${headingClass} underline-offset-4 ${
+                                checked ? "underline" : ""
+                              } ${locked ? "cursor-default" : "cursor-pointer"}`}
+                            >
+                              {KIND_LABELS[kind]}
+                            </button>
+                          </Fragment>
+                        );
+                      })
+                    : subject.name}
+                  {/*
+                   * Select-all / clear-all for this subject. The circle is a
+                   * styled span rather than the ● character so it can scale
+                   * on hover without reflowing the heading — a transform
+                   * paints outside the line box instead of growing it — and
+                   * so it takes the heading's own muted token. The button is
+                   * sized to the text line (h-4 = text-xs's line-height) so
+                   * it adds no height of its own.
+                   *
+                   * Icon-only, and deliberately without a `title`: the hover
+                   * tooltip is the only text this control ever showed, and it
+                   * was unwanted. The aria-label stays — it says what the
+                   * click will do, since "select all" and "clear all" share
+                   * one control — but it is never rendered visually.
+                   */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      applySubjectToggle(subjectIds, selectedIds, onToggle)
+                    }
+                    aria-label={`${
+                      subjectAllSelected ? "Clear" : "Select"
+                    } all ${subject.name} topics`}
+                    className="group inline-flex h-4 w-4 translate-y-[0.5px] cursor-pointer items-center justify-center border-0 bg-transparent p-0"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="block h-[0.4rem] w-[0.4rem] rounded-full bg-text-muted transition-transform duration-150 ease-out group-hover:scale-[1.8]"
+                    />
+                  </button>
+                </span>
               </legend>
             )}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

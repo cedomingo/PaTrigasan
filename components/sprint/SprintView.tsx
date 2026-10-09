@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, Divider, MathText, PromptLabel, SectionLabel } from "@/components/ui";
-import { getAllCategories } from "@/data";
+import { getAllCategories, getLeaderboardKey } from "@/data";
 import type { QuestionKind } from "@/types";
 import { buildQuestionQueue, type SprintHandoff, type SprintQuestion } from "@/lib/quiz-engine";
 import { getDeviceBestScore } from "@/lib/leaderboard";
@@ -118,6 +118,14 @@ export default function SprintView({
   // then autosave may already have overwritten the old best with this very
   // run, making every score look unremarkable. null until the read resolves.
   const [previousBest, setPreviousBest] = useState<number | null>(null);
+  // The board this run counts toward, or undefined when the selection isn't
+  // saveable (partial subject / mix of partial subjects). Fixed for the run:
+  // the component is keyed by the selection.
+  const leaderboardKey = useMemo(
+    () => getLeaderboardKey(categoryIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   // Fast-ticking game-loop bookkeeping lives in refs, not state, so the
   // 40ms/100ms interval callbacks never fight React's batching — only the
@@ -294,8 +302,10 @@ export default function SprintView({
   // screen then says "Final score" rather than claiming a record it can't
   // verify.
   useEffect(() => {
+    // Not saveable -> no board, so no record to compare against.
+    if (leaderboardKey === undefined) return;
     let cancelled = false;
-    getDeviceBestScore(getDeviceId(), categoryIds)
+    getDeviceBestScore(getDeviceId(), leaderboardKey)
       .then((best) => {
         if (!cancelled) setPreviousBest(best);
       })
@@ -397,6 +407,7 @@ export default function SprintView({
               missedCount={missedCount}
               bestStreak={bestStreak}
               categoryIds={categoryIds}
+              leaderboardKey={leaderboardKey}
               onPlayAgain={onExit}
             />
           </Card>

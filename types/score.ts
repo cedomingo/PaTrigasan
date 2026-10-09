@@ -1,14 +1,10 @@
 /**
  * Firestore document shape for the `scores` collection.
  *
- * `categoryIds` always stores the *exact* set of categories played for that
- * run (sorted, for stable equality checks), so the leaderboard can support
- * both:
- *   1. An "all categories" combined leaderboard — query where categoryIds
- *      equals the full sorted list of every currently available category id.
- *   2. Per-category filtered leaderboards — query where categoryIds
- *      equals the sorted list the player filtered by (using the same
- *      checkbox UI as category selection).
+ * Only runs covering a whole subject, or every category ("Full Mix"), are
+ * saved. `leaderboardKey` names the board (subject id or "full-mix") and is
+ * what the leaderboard queries on; `categoryIds` is the exact sorted set
+ * played, kept alongside it.
  *
  * See /lib/leaderboard.ts for the query helpers that use this.
  */
@@ -32,8 +28,14 @@ export interface ScoreEntry {
   missedCount: number;
   /** Longest correct-answer streak achieved during the run. */
   bestStreak: number;
-  /** Exact set of category ids played, sorted ascending for stable equality queries. */
+  /** Exact set of category ids played, sorted ascending. Kept for reference; boards are queried by `leaderboardKey`. */
   categoryIds: string[];
+  /**
+   * Which leaderboard the run belongs to: a subject id (every category of
+   * that subject) or "full-mix" (every category). See getLeaderboardKey() in
+   * /data/subjects.ts. Rows written before this field existed read back as "".
+   */
+  leaderboardKey: string;
   /** Firestore server timestamp (ms since epoch once read back client-side). */
   timestamp: number;
 }

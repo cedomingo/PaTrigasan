@@ -158,3 +158,34 @@ export function getAllCategoryIdsSorted(): string[] {
     .map((c) => c.id)
     .sort();
 }
+
+/** Leaderboard key for a run that covers every category across every subject. */
+export const FULL_MIX_KEY = "full-mix";
+
+/**
+ * Maps a set of checked category ids to the leaderboard it counts toward, or
+ * undefined when the run isn't saveable. Saveable means the selection is
+ * *exactly* either:
+ *   - every category of one subject and nothing else -> that subject's id, or
+ *   - every category of every subject                 -> FULL_MIX_KEY.
+ * Partial subjects, or any mix of partial subjects, return undefined.
+ * Derived from getAllSubjects(), so new subjects need no change here.
+ */
+export function getLeaderboardKey(
+  selectedIds: Iterable<string>
+): string | undefined {
+  const selected = new Set(selectedIds);
+  if (selected.size === 0) return undefined;
+
+  const subjects = getAllSubjects();
+  const coversExactly = (ids: string[]) =>
+    ids.length === selected.size && ids.every((id) => selected.has(id));
+
+  for (const subject of subjects) {
+    if (coversExactly(subject.categories.map((c) => c.id))) return subject.id;
+  }
+  if (coversExactly(subjects.flatMap((s) => s.categories.map((c) => c.id)))) {
+    return FULL_MIX_KEY;
+  }
+  return undefined;
+}

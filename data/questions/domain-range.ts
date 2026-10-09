@@ -188,13 +188,13 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
         fn: "\\tan^{-1}x",
         kind: DOMAIN,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       {
         fn: "\\cot^{-1}x",
         kind: DOMAIN,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       {
         fn: "\\csc^{-1}x",
@@ -256,13 +256,13 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
         fn: "\\sinh x",
         kind: DOMAIN,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       {
         fn: "\\tanh x",
         kind: DOMAIN,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       {
         fn: "\\operatorname{sech} x",
@@ -289,7 +289,7 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
         fn: "\\sinh x",
         kind: RANGE,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       { fn: "\\tanh x", kind: RANGE, key: "(-1,1)", ans: "(-1, 1)" },
       {
@@ -327,7 +327,7 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
         fn: "\\sinh^{-1}x",
         kind: DOMAIN,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       {
         fn: "\\tanh^{-1}x",
@@ -365,13 +365,13 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
         fn: "\\sinh^{-1}x",
         kind: RANGE,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       {
         fn: "\\tanh^{-1}x",
         kind: RANGE,
         key: "(-inf,inf)",
-        ans: "(-\\infty, \\infty)",
+        ans: "\\mathbb{R}",
       },
       // Same answer as ran(cosh^-1 x) above — shares key "[0,inf)".
       {

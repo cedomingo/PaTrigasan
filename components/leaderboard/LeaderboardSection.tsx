@@ -6,15 +6,19 @@ import { subscribeToLeaderboard, filterByTimeframe } from "@/lib/leaderboard";
 import { setAutosaveScorePreference, useAutosaveScore } from "@/lib/preferences";
 import type { ScoreEntry } from "@/types";
 import LeaderboardTable from "./LeaderboardTable";
+import { LEADERBOARD_ORDER, getLeaderboardLabel } from "./boards";
 import LeaderboardFocusToggle, { type LeaderboardFocus } from "./LeaderboardFocusToggle";
 
 type Timeframe = "all-time" | "this-week";
 
-interface LeaderboardSectionProps {
-  categoryIds: string[];
-}
-
-export default function LeaderboardSection({ categoryIds }: LeaderboardSectionProps) {
+export default function LeaderboardSection() {
+  // Index into LEADERBOARD_ORDER; clicking the sub-label advances it and loops.
+  const [boardIndex, setBoardIndex] = useState(0);
+  const boardKey = LEADERBOARD_ORDER[boardIndex];
+  const boardLabel = getLeaderboardLabel(boardKey);
+  const nextLabel = getLeaderboardLabel(
+    LEADERBOARD_ORDER[(boardIndex + 1) % LEADERBOARD_ORDER.length]
+  );
   const [timeframe, setTimeframe] = useState<Timeframe>("all-time");
   // Where the fixed five-row window is parked: the top of the board (default)
   // or the player's own row. Lives here because the toggle sits in the header
@@ -29,18 +33,11 @@ export default function LeaderboardSection({ categoryIds }: LeaderboardSectionPr
   const autosaveScore = useAutosaveScore();
 
   useEffect(() => {
-    if (categoryIds.length === 0) {
-      setEntries([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     const unsubscribe = subscribeToLeaderboard(
-      categoryIds,
+      boardKey,
       (data) => {
         setEntries(data);
         setLoading(false);
@@ -52,8 +49,7 @@ export default function LeaderboardSection({ categoryIds }: LeaderboardSectionPr
     );
 
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryIds.join(",")]);
+  }, [boardKey]);
 
   const displayed = filterByTimeframe(entries, timeframe);
 
@@ -66,7 +62,18 @@ export default function LeaderboardSection({ categoryIds }: LeaderboardSectionPr
             the same baseline, which the row's own items-center then centers
             the box against. */}
         <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-          <SectionLabel underline>Leaderboard</SectionLabel>
+          <div className="flex flex-col items-start gap-1">
+            <SectionLabel underline>Leaderboard</SectionLabel>
+            <button
+              type="button"
+              onClick={() => setBoardIndex((i) => (i + 1) % LEADERBOARD_ORDER.length)}
+              aria-label={`Leaderboard: ${boardLabel}. Switch to ${nextLabel}.`}
+              className="-ml-1 inline-flex items-center gap-1 rounded-sm px-1 py-0.5 font-sans text-xs text-text-muted transition-colors duration-150 hover:text-navy focus-visible:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-medium"
+            >
+              {boardLabel}
+              <ChevronsIcon />
+            </button>
+          </div>
           <label className="flex cursor-pointer items-center gap-2 font-sans text-xs text-text-muted">
             <input
               type="checkbox"
@@ -103,5 +110,21 @@ export default function LeaderboardSection({ categoryIds }: LeaderboardSectionPr
         focus={focus}
       />
     </section>
+  );
+}
+
+/** Small up/down chevrons — hints that the label cycles through boards. */
+function ChevronsIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3 w-3 shrink-0">
+      <path
+        d="M4.5 6.5 8 3l3.5 3.5M4.5 9.5 8 13l3.5-3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

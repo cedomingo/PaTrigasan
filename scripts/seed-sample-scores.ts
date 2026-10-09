@@ -2,8 +2,8 @@
  * Run with: npm run seed:scores
  *
  * Writes a handful of realistic-looking ScoreEntry documents so you can
- * see the leaderboard actually populated — both the "Full Mix" and
- * "By Topic" views. Safe to run multiple times: each sample row gets its own
+ * see the leaderboard actually populated — every board (each subject and
+ * "Full Mix"). Safe to run multiple times: each sample row gets its own
  * synthetic device id, so a re-run just keeps whichever score is higher
  * rather than piling up duplicates. Delete them from the Firebase console
  * when you're done, or wipe the whole `scores` collection.
@@ -11,7 +11,11 @@
  * Note this script writes no real device ids — a real browser's scores live
  * under the id in its localStorage (see /lib/device.ts).
  */
-import { getAllCategoryIdsSorted, getAllCategories } from "../data";
+import {
+  FULL_MIX_KEY,
+  getAllCategoryIdsSorted,
+  getAllSubjects,
+} from "../data";
 import { writeScore } from "../lib/leaderboard";
 
 const NAMES = ["Alex", "Priya", "Jordan", "Sam", "Mika", "Diego", "Noor", "Casey"];
@@ -22,13 +26,19 @@ function randomInt(min: number, max: number) {
 
 async function main() {
   const fullMix = getAllCategoryIdsSorted();
-  const categories = getAllCategories();
 
-  const runs: { categoryIds: string[] }[] = [
-    // A handful of "Full Mix" runs (every category played).
-    ...Array.from({ length: 5 }, () => ({ categoryIds: fullMix })),
-    // A handful of single-category "By Topic" runs, one per category.
-    ...categories.map((c) => ({ categoryIds: [c.id] })),
+  // Only saveable runs exist now: one whole-subject run per subject, plus Full Mix.
+  const runs: { categoryIds: string[]; leaderboardKey: string }[] = [
+    ...Array.from({ length: 5 }, () => ({
+      categoryIds: fullMix,
+      leaderboardKey: FULL_MIX_KEY,
+    })),
+    ...getAllSubjects().flatMap((subject) =>
+      Array.from({ length: 3 }, () => ({
+        categoryIds: subject.categories.map((c) => c.id),
+        leaderboardKey: subject.id,
+      }))
+    ),
   ];
 
   console.log(`Seeding ${runs.length} sample scores...`);
@@ -47,6 +57,7 @@ async function main() {
       missedCount,
       bestStreak,
       categoryIds: run.categoryIds,
+      leaderboardKey: run.leaderboardKey,
     });
   }
 

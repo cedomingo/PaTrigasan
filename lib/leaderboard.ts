@@ -14,22 +14,11 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db, SCORES_COLLECTION } from "./firebase";
-import { getAllCategoryIdsSorted } from "@/data";
 import type { NewScoreEntry, ScoreEntry } from "@/types";
 
-/**
- * Category ids are always stored sorted ascending, so `where("categoryIds",
- * "==", sortedIds)` is a reliable exact-set match — both for "this exact
- * per-topic combination" and for "every category currently available"
- * (the "full mix" view).
- */
+/** Category ids are stored sorted ascending, so the stored array is stable. */
 export function sortCategoryIds(categoryIds: string[]): string[] {
   return [...categoryIds].sort();
-}
-
-/** The category-id set that counts as a "Full Mix" run — every category currently available. */
-export function getFullMixCategoryIds(): string[] {
-  return getAllCategoryIdsSorted();
 }
 
 /**
@@ -43,9 +32,9 @@ export function getFullMixCategoryIds(): string[] {
  * saved score is a no-op — nothing is written, so the stored name stays put.
  *
  * The lookup is deliberately equality-only — `where(deviceId) +
- * where(categoryIds)`, no `orderBy`. Adding a sort on `score` would make
+ * where(leaderboardKey)`, no `orderBy`. Adding a sort on `score` would make
  * this a compound query that Firestore refuses to run without a dedicated
- * (deviceId, categoryIds, score) composite index, and since the caller
+ * (deviceId, leaderboardKey, score) composite index, and since the caller
  * swallows write errors a missing index meant "every finished run silently
  * fails to save". Equality-only filters are served by Firestore's merged
  * single-field indexes, so saving works on a stock project; the best row is
@@ -53,7 +42,7 @@ export function getFullMixCategoryIds(): string[] {
  */
 export async function writeScore(entry: NewScoreEntry): Promise<void> {
   const sorted = sortCategoryIds(entry.categoryIds);
-  const rows = await fetchDeviceRows(entry.deviceId, sorted);
+  const rows = await fetchDeviceRows(entry.deviceId, entry.leaderboardKey);
   const best = rows[0];
 
   // Already-saved score is higher (or equal) — keep it, write nothing. The
@@ -69,6 +58,7 @@ export async function writeScore(entry: NewScoreEntry): Promise<void> {
     missedCount: entry.missedCount,
     bestStreak: entry.bestStreak,
     categoryIds: sorted,
+    leaderboardKey: entry.leaderboardKey,
     timestamp: serverTimestamp(),
   };
 
@@ -86,16 +76,16 @@ export async function writeScore(entry: NewScoreEntry): Promise<void> {
 }
 
 /**
- * The device's saved rows for an exact category set, best score first. Same
+ * The device's saved rows for one leaderboard, best score first. Same
  * equality-only shape as the write path below, so both are served by
  * Firestore's merged single-field indexes.
  */
-async function fetchDeviceRows(deviceId: string, sortedCategoryIds: string[]) {
+async function fetchDeviceRows(deviceId: string, leaderboardKey: string) {
   const snapshot = await getDocs(
     query(
       collection(db, SCORES_COLLECTION),
       where("deviceId", "==", deviceId),
-      where("categoryIds", "==", sortedCategoryIds)
+      where("leaderboardKey", "==", leaderboardKey)
     )
   );
 
@@ -105,7 +95,7 @@ async function fetchDeviceRows(deviceId: string, sortedCategoryIds: string[]) {
 }
 
 /**
- * This device's best saved score for an exact category set, or 0 when it has
+ * This device's best saved score for one leaderboard, or 0 when it has
  * none yet. SprintView reads this *before* a run starts so the results screen
  * can label a record run without racing the autosave write of that same run
  * (which would otherwise overwrite the previous best and make every score look
@@ -113,9 +103,9 @@ async function fetchDeviceRows(deviceId: string, sortedCategoryIds: string[]) {
  */
 export async function getDeviceBestScore(
   deviceId: string,
-  categoryIds: string[]
+  leaderboardKey: string
 ): Promise<number> {
-  const rows = await fetchDeviceRows(deviceId, sortCategoryIds(categoryIds));
+  const rows = await fetchDeviceRows(deviceId, leaderboardKey);
   return rows[0]?.data().score ?? 0;
 }
 
@@ -131,6 +121,7 @@ function snapshotToEntries(snapshot: QuerySnapshot<DocumentData>): ScoreEntry[] 
       missedCount: data.missedCount ?? 0,
       bestStreak: data.bestStreak ?? 0,
       categoryIds: data.categoryIds ?? [],
+      leaderboardKey: data.leaderboardKey ?? "",
       // serverTimestamp() resolves to null in the instant before the server
       // acks the write (local optimistic snapshot); fall back to "now" so
       // the row still sorts/displays sensibly until the real value arrives.
@@ -140,26 +131,25 @@ function snapshotToEntries(snapshot: QuerySnapshot<DocumentData>): ScoreEntry[] 
 }
 
 /**
- * Live-subscribes to the leaderboard for an exact category-id set (pass
- * `getFullMixCategoryIds()` for the "Full Mix" view, or whatever the
- * "By Topic" checkboxes currently have selected). Fetches a generous
- * window (default 100) ordered by score descending so the "This Week"
- * toggle can filter client-side without needing a composite Firestore
- * index on (categoryIds, timestamp, score) — see README for the index
- * Firestore *will* ask you to create for (categoryIds, score).
+ * Live-subscribes to one leaderboard (a subject id, or "full-mix" — see
+ * getLeaderboardKey() in /data/subjects.ts). Fetches a generous window
+ * (default 100) ordered by score descending so the "This Week" toggle can
+ * filter client-side without a three-field index.
  *
- * Returns an unsubscribe function — call it on cleanup / when the filter
- * changes.
+ * Needs a composite index on `scores`: leaderboardKey (Ascending) +
+ * score (Descending). Firestore's error message links to create it.
+ *
+ * Returns an unsubscribe function — call it on cleanup / when the board changes.
  */
 export function subscribeToLeaderboard(
-  categoryIds: string[],
+  leaderboardKey: string,
   onData: (entries: ScoreEntry[]) => void,
   onError: (error: Error) => void,
   windowSize = 100
 ): () => void {
   const q = query(
     collection(db, SCORES_COLLECTION),
-    where("categoryIds", "==", sortCategoryIds(categoryIds)),
+    where("leaderboardKey", "==", leaderboardKey),
     orderBy("score", "desc"),
     limit(windowSize)
   );

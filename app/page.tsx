@@ -370,7 +370,7 @@ export default function Home() {
         className={`transition-opacity duration-200 ${liveSprintHidden}`}
         inert={sprintLive}
       >
-        <LeaderboardSection categoryIds={Array.from(selectedIds)} />
+        <LeaderboardSection />
       </div>
     </main>
   );
