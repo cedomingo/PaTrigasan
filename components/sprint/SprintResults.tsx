@@ -7,14 +7,23 @@ import { getPlayerNameOrDefault } from "@/lib/cookies";
 import { getDeviceId } from "@/lib/device";
 import { useAutosaveScore } from "@/lib/preferences";
 
-/** How long the score headline shows before the message replaces it. */
-const HEADLINE_HOLD_MS = 5000;
-/** How long the "Click here to save" prompt shows before fading back. */
-const PROMPT_HOLD_MS = 4000;
+/**
+ * How long each message under the score stays up before it trades places with
+ * the other one. The headline and the run's status line alternate for as long
+ * as the results screen is up, so the score is always paired with what did (or
+ * didn't) happen to it; a message that lands once and then sits there reads as
+ * if the run had saved.
+ */
+const MESSAGE_CYCLE_MS = 3000;
 /** Matches the duration-500 on the fading wrapper below. */
 const FADE_MS = 500;
 
-type MessageStage = "headline" | "ineligible" | "prompt" | "saved";
+/**
+ * "headline" is the score's own line ("New highscore!" / "Final score"); every
+ * other value alternates with it and says what the run's state means for the
+ * leaderboard.
+ */
+type MessageStage = "headline" | "ineligible" | "beaten" | "prompt" | "saved";
 
 interface SprintResultsProps {
   score: number;
@@ -60,6 +69,7 @@ export default function SprintResults({
   const [visible, setVisible] = useState(false);
   const autosaveScore = useAutosaveScore();
   const isNewHighScore = previousBest !== null && score > previousBest;
+  const saveable = leaderboardKey !== undefined;
 
   // Fade in after mount.
   useEffect(() => {
@@ -67,36 +77,19 @@ export default function SprintResults({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const saveable = leaderboardKey !== undefined;
-
-  // Message under the score: the headline first, then (after a pause) a
-  // message that depends on whether the run can be saved. `shown` drives the
-  // fade; `stage` is what's rendered while it's visible.
-  const [stage, setStage] = useState<MessageStage>("headline");
+  // The message under the score is two slots taking turns: the headline, then
+  // whatever the run's state has to say about saving it. `slot` is which one is
+  // up; the text itself is derived from the live state below, so a save landing
+  // or autosave being toggled shows up on the next render without disturbing
+  // the loop. `messageShown` drives the cross-fade between the two.
+  const [slot, setSlot] = useState<"headline" | "context">("headline");
   const [messageShown, setMessageShown] = useState(true);
-  const stageRef = useRef<MessageStage>("headline");
-  const autosaveRef = useRef(autosaveScore);
+  const [saved, setSaved] = useState(false);
   const timersRef = useRef<number[]>([]);
-  useEffect(() => {
-    autosaveRef.current = autosaveScore;
-  }, [autosaveScore]);
 
   const later = useCallback((fn: () => void, ms: number) => {
     timersRef.current.push(window.setTimeout(fn, ms));
   }, []);
-
-  // Fade out, swap the content while invisible, fade back in.
-  const swapTo = useCallback(
-    (next: MessageStage) => {
-      setMessageShown(false);
-      later(() => {
-        stageRef.current = next;
-        setStage(next);
-        setMessageShown(true);
-      }, FADE_MS);
-    },
-    [later]
-  );
 
   // Writes the run once. Shared by autosave and the click-to-save prompt, and
   // guarded by one ref so the two can never both write (strict mode, a click
@@ -107,6 +100,7 @@ export default function SprintResults({
   const saveRun = useCallback((): boolean => {
     if (leaderboardKey === undefined || savedRef.current) return false;
     savedRef.current = true;
+    setSaved(true);
     writeScore({
       deviceId: getDeviceId(),
       name: getPlayerNameOrDefault(),
@@ -118,10 +112,7 @@ export default function SprintResults({
       leaderboardKey,
     }).catch(() => {
       savedRef.current = false;
-      if (stageRef.current === "saved") {
-        stageRef.current = "prompt";
-        setStage("prompt");
-      }
+      setSaved(false);
     });
     return true;
   }, [leaderboardKey, score, correctCount, missedCount, bestStreak, categoryIds]);
@@ -136,23 +127,23 @@ export default function SprintResults({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autosaveScore]);
 
-  // Mount-only message timeline.
+  // Mount-only loop: alternate the headline and the status line forever, one
+  // dwell plus a fade apart. Every timer is tracked so unmounting cancels the
+  // whole chain.
   useEffect(() => {
     const timers = timersRef.current;
-    later(() => {
-      if (!saveable) {
-        swapTo("ineligible");
-        return;
-      }
-      // Autosave on (or already saved): nothing to prompt for.
-      if (autosaveRef.current || savedRef.current) return;
 
-      swapTo("prompt");
+    function step() {
       later(() => {
-        if (stageRef.current !== "prompt" || autosaveRef.current) return;
-        swapTo("headline");
-      }, FADE_MS + PROMPT_HOLD_MS);
-    }, HEADLINE_HOLD_MS);
+        setMessageShown(false);
+        later(() => {
+          setSlot((current) => (current === "headline" ? "context" : "headline"));
+          setMessageShown(true);
+          step();
+        }, FADE_MS);
+      }, MESSAGE_CYCLE_MS);
+    }
+    step();
 
     return () => {
       timers.forEach((id) => window.clearTimeout(id));
@@ -162,13 +153,24 @@ export default function SprintResults({
   }, []);
 
   function handleSaveClick() {
-    if (!saveRun()) return;
-    swapTo("saved");
+    saveRun();
   }
 
-  // Turning autosave on while the prompt is up retires the prompt.
+  // What the headline alternates with. A miss we can't verify (the pre-run best
+  // read failed) never claims the score beat the leaderboard — inviting a save
+  // is safe there, since writeScore only ever keeps the higher score.
+  const contextStage: MessageStage = !saveable
+    ? "ineligible"
+    : saved || autosaveScore
+      ? isNewHighScore || previousBest === null
+        ? "saved"
+        : "beaten"
+      : isNewHighScore || previousBest === null
+        ? "prompt"
+        : "beaten";
+
   const displayStage: MessageStage =
-    stage === "prompt" && autosaveScore ? "headline" : stage;
+    slot === "headline" ? "headline" : contextStage;
 
   return (
     // The 32rem floor and the roomy mobile rhythm are desktop sizing: on a
@@ -184,11 +186,13 @@ export default function SprintResults({
       <SectionLabel tone="muted">Time&apos;s up</SectionLabel>
 
       {/* Fixed-height slot (two lines of text-sm) so swapping the headline
-          for a longer message never moves the score or anything below it. */}
+          for a longer message never moves the score or anything below it, and
+          vertically centred so the one-line headline sits in the middle of
+          the slot rather than down at the bottom edge. */}
       <div
         role="status"
         aria-live="polite"
-        className="mt-3 flex min-h-[2.5rem] items-end justify-center sm:mt-4"
+        className="mt-3 flex min-h-[2.5rem] items-center justify-center sm:mt-4"
       >
         <div
           className={`transition-opacity duration-500 ease-out ${
@@ -203,6 +207,11 @@ export default function SprintResults({
           {displayStage === "ineligible" && (
             <p className="max-w-xs font-sans text-sm text-text-muted">
               Only select all topics under the same category to save your score!
+            </p>
+          )}
+          {displayStage === "beaten" && (
+            <p className="max-w-xs font-sans text-sm text-text-muted">
+              Beat your high score to set a new record!
             </p>
           )}
           {displayStage === "prompt" && (

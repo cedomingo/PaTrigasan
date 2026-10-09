@@ -56,33 +56,33 @@ export default function LeaderboardSection() {
   return (
     <section className="mx-auto max-w-2xl px-6 pb-16">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        {/* items-start, not items-center: SectionLabel is a text line plus an
-            underline rule, so centering against the whole block would sit the
-            checkbox below the wordmark. Top-aligning puts both text lines on
-            the same baseline, which the row's own items-center then centers
-            the box against. */}
-        <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-          <div className="flex flex-col items-start gap-1">
+        <div className="flex flex-col items-start gap-1">
+          {/* The checkbox shares the wordmark's line instead of sitting beside
+              the whole label block. The board name below changes width as you
+              cycle tabs, so as a sibling of that block it would get pushed
+              around ("Domain & Range" is wider than "Leaderboard").
+              items-start keeps the box level with the text, not the underline. */}
+          <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
             <SectionLabel underline>Leaderboard</SectionLabel>
-            <button
-              type="button"
-              onClick={() => setBoardIndex((i) => (i + 1) % LEADERBOARD_ORDER.length)}
-              aria-label={`Leaderboard: ${boardLabel}. Switch to ${nextLabel}.`}
-              className="-ml-1 inline-flex items-center gap-1 rounded-sm px-1 py-0.5 font-sans text-xs text-text-muted transition-colors duration-150 hover:text-navy focus-visible:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-medium"
-            >
-              {boardLabel}
-              <ChevronsIcon />
-            </button>
+            <label className="flex cursor-pointer items-center gap-2 font-sans text-xs text-text-muted">
+              <input
+                type="checkbox"
+                checked={autosaveScore}
+                onChange={(e) => setAutosaveScorePreference(e.target.checked)}
+                className="h-4 w-4 shrink-0 accent-[var(--color-navy)]"
+              />
+              Autosave score
+            </label>
           </div>
-          <label className="flex cursor-pointer items-center gap-2 font-sans text-xs text-text-muted">
-            <input
-              type="checkbox"
-              checked={autosaveScore}
-              onChange={(e) => setAutosaveScorePreference(e.target.checked)}
-              className="h-4 w-4 shrink-0 accent-[var(--color-navy)]"
-            />
-            Autosave score
-          </label>
+          <button
+            type="button"
+            onClick={() => setBoardIndex((i) => (i + 1) % LEADERBOARD_ORDER.length)}
+            aria-label={`Leaderboard: ${boardLabel}. Switch to ${nextLabel}.`}
+            className="-ml-1 inline-flex items-center gap-1 rounded-sm px-1 py-0.5 font-sans text-xs text-text-muted transition-colors duration-150 hover:text-navy focus-visible:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-medium"
+          >
+            {boardLabel}
+            <ChevronsIcon />
+          </button>
         </div>
         {/* Grouped so the square button always stays beside the All-Time /
             This Week control, even when the header wraps on narrow screens. */}
