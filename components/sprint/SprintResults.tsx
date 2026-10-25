@@ -45,7 +45,7 @@ interface SprintResultsProps {
   onPlayAgain: () => void;
 }
 
-function StatBox({ value, label }: { value: number; label: string }) {
+export function StatBox({ value, label }: { value: number; label: string }) {
   return (
     <Card className="p-2.5 sm:p-3">
       <div className="font-serif text-xl text-navy">{value}</div>

@@ -76,6 +76,50 @@ export async function writeScore(entry: NewScoreEntry): Promise<void> {
 }
 
 /**
+ * The library site (/mathlib) keeps its own boards in the same collection by
+ * prefixing the leaderboard key, so its scores never mix with the public
+ * site's and no new collection or Firestore index is needed. Set this to ""
+ * to make the two sites share their boards.
+ */
+const LIBRARY_BOARD_PREFIX = "lib:";
+
+/** The stored leaderboard key for a board on the library site. */
+export function libraryBoardKey(key: string): string {
+  return `${LIBRARY_BOARD_PREFIX}${key}`;
+}
+
+/** Longest name the library board accepts. */
+export const LIBRARY_NAME_MAX_LENGTH = 12;
+
+/** A typed name as it is stored: trimmed, inner whitespace collapsed, capped. */
+export function cleanLibraryName(name: string): string {
+  return name.trim().replace(/\s+/g, " ").slice(0, LIBRARY_NAME_MAX_LENGTH);
+}
+
+/**
+ * Saves one finished library run as its own leaderboard row.
+ *
+ * Nothing is merged or replaced: the public site's writeScore() keeps one best
+ * row per *device*, which can't work on a shared library computer, and merging
+ * by *name* would wrongly fold two different students with the same name into
+ * one row. So every saved run is simply added. `entry.leaderboardKey` is the
+ * plain key (subject id or "full-mix"); the library prefix is applied here.
+ */
+export async function writeLibraryScore(entry: NewScoreEntry): Promise<void> {
+  await addDoc(collection(db, SCORES_COLLECTION), {
+    deviceId: entry.deviceId,
+    name: cleanLibraryName(entry.name),
+    score: entry.score,
+    correctCount: entry.correctCount,
+    missedCount: entry.missedCount,
+    bestStreak: entry.bestStreak,
+    categoryIds: sortCategoryIds(entry.categoryIds),
+    leaderboardKey: libraryBoardKey(entry.leaderboardKey),
+    timestamp: serverTimestamp(),
+  });
+}
+
+/**
  * The device's saved rows for one leaderboard, best score first. Same
  * equality-only shape as the write path below, so both are served by
  * Firestore's merged single-field indexes.

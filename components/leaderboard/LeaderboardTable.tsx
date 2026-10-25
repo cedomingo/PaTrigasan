@@ -10,6 +10,11 @@ interface LeaderboardTableProps {
   error: string | null;
   /** Where to park the window — the top of the board, or the player's row. */
   focus: LeaderboardFocus;
+  /**
+   * Highlight the rows saved from this browser. Off on the library site, where
+   * the browser is shared by many players and "mine" means nothing.
+   */
+  markOwnRows?: boolean;
 }
 
 /**
@@ -52,6 +57,7 @@ export default function LeaderboardTable({
   loading,
   error,
   focus,
+  markOwnRows = true,
 }: LeaderboardTableProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const myRowRef = useRef<HTMLTableRowElement>(null);
@@ -169,7 +175,8 @@ export default function LeaderboardTable({
             {entries.map((entry, i) => {
               // Your own row, keyed by device (see /lib/device.ts) — not by
               // name, which you can change at any time.
-              const isMe = myDeviceId !== "" && entry.deviceId === myDeviceId;
+              const isMe =
+                markOwnRows && myDeviceId !== "" && entry.deviceId === myDeviceId;
               return (
                 <tr
                   key={entry.id ?? i}

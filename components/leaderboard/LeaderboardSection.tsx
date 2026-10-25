@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { SectionLabel, SegmentedControl } from "@/components/ui";
-import { subscribeToLeaderboard, filterByTimeframe } from "@/lib/leaderboard";
+import {
+  subscribeToLeaderboard,
+  filterByTimeframe,
+  libraryBoardKey,
+} from "@/lib/leaderboard";
 import { setAutosaveScorePreference, useAutosaveScore } from "@/lib/preferences";
 import type { ScoreEntry } from "@/types";
 import LeaderboardTable from "./LeaderboardTable";
@@ -11,7 +15,18 @@ import LeaderboardFocusToggle, { type LeaderboardFocus } from "./LeaderboardFocu
 
 type Timeframe = "all-time" | "this-week";
 
-export default function LeaderboardSection() {
+interface LeaderboardSectionProps {
+  /**
+   * The school-library site: reads the library's own boards, and hides the
+   * autosave checkbox and the "find my row" toggle — both rely on this browser
+   * being one person, which a shared library computer isn't.
+   */
+  libraryMode?: boolean;
+}
+
+export default function LeaderboardSection({
+  libraryMode = false,
+}: LeaderboardSectionProps) {
   // Index into LEADERBOARD_ORDER; clicking the sub-label advances it and loops.
   const [boardIndex, setBoardIndex] = useState(0);
   const boardKey = LEADERBOARD_ORDER[boardIndex];
@@ -37,7 +52,7 @@ export default function LeaderboardSection() {
     setError(null);
 
     const unsubscribe = subscribeToLeaderboard(
-      boardKey,
+      libraryMode ? libraryBoardKey(boardKey) : boardKey,
       (data) => {
         setEntries(data);
         setLoading(false);
@@ -49,7 +64,7 @@ export default function LeaderboardSection() {
     );
 
     return unsubscribe;
-  }, [boardKey]);
+  }, [boardKey, libraryMode]);
 
   const displayed = filterByTimeframe(entries, timeframe);
 
@@ -64,15 +79,17 @@ export default function LeaderboardSection() {
               items-start keeps the box level with the text, not the underline. */}
           <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
             <SectionLabel underline>Leaderboard</SectionLabel>
-            <label className="flex cursor-pointer items-center gap-2 font-sans text-xs text-text-muted">
-              <input
-                type="checkbox"
-                checked={autosaveScore}
-                onChange={(e) => setAutosaveScorePreference(e.target.checked)}
-                className="h-4 w-4 shrink-0 accent-[var(--color-navy)]"
-              />
-              Autosave score
-            </label>
+            {!libraryMode && (
+              <label className="flex cursor-pointer items-center gap-2 font-sans text-xs text-text-muted">
+                <input
+                  type="checkbox"
+                  checked={autosaveScore}
+                  onChange={(e) => setAutosaveScorePreference(e.target.checked)}
+                  className="h-4 w-4 shrink-0 accent-[var(--color-navy)]"
+                />
+                Autosave score
+              </label>
+            )}
           </div>
           <button
             type="button"
@@ -87,10 +104,12 @@ export default function LeaderboardSection() {
         {/* Grouped so the square button always stays beside the All-Time /
             This Week control, even when the header wraps on narrow screens. */}
         <div className="flex items-center gap-2">
-          <LeaderboardFocusToggle
-            focus={focus}
-            onToggle={() => setFocus((f) => (f === "top" ? "me" : "top"))}
-          />
+          {!libraryMode && (
+            <LeaderboardFocusToggle
+              focus={focus}
+              onToggle={() => setFocus((f) => (f === "top" ? "me" : "top"))}
+            />
+          )}
           <SegmentedControl
             ariaLabel="Leaderboard timeframe"
             value={timeframe}
@@ -108,6 +127,7 @@ export default function LeaderboardSection() {
         loading={loading}
         error={error}
         focus={focus}
+        markOwnRows={!libraryMode}
       />
     </section>
   );

@@ -12,6 +12,7 @@ import SprintHUD from "./SprintHUD";
 import confetti from "canvas-confetti";
 import { playCorrect, resetPitch } from "@/lib/sfx";
 import SprintResults from "./SprintResults";
+import LibrarySprintResults from "./LibrarySprintResults";
 
 /**
  * Sprint mode — a full-screen view-state swap (no route change), ported
@@ -55,6 +56,11 @@ interface SprintViewProps {
   onExit: () => void;
   onGameEnd?: () => void;
   handoff?: SprintHandoff;
+  /**
+   * The school-library site (/mathlib): no autosave and no per-device best —
+   * the results screen asks for a name instead (LibrarySprintResults).
+   */
+  libraryMode?: boolean;
 }
 
 interface RevealedAnswer {
@@ -76,6 +82,7 @@ export default function SprintView({
   onExit,
   onGameEnd,
   handoff,
+  libraryMode = false,
 }: SprintViewProps) {
   const categoryLabels = useMemo(
     () => new Map(getAllCategories().map((c) => [c.id, c.label])),
@@ -303,7 +310,8 @@ export default function SprintView({
   // verify.
   useEffect(() => {
     // Not saveable -> no board, so no record to compare against.
-    if (leaderboardKey === undefined) return;
+    // The library has no per-device "previous best" (the device is shared).
+    if (leaderboardKey === undefined || libraryMode) return;
     let cancelled = false;
     getDeviceBestScore(getDeviceId(), leaderboardKey)
       .then((best) => {
@@ -400,16 +408,28 @@ export default function SprintView({
 
         {phase === "ended" && (
           <Card className="h-full p-5 sm:p-10">
-            <SprintResults
-              score={score}
-              previousBest={previousBest}
-              correctCount={correctCount}
-              missedCount={missedCount}
-              bestStreak={bestStreak}
-              categoryIds={categoryIds}
-              leaderboardKey={leaderboardKey}
-              onPlayAgain={onExit}
-            />
+            {libraryMode ? (
+              <LibrarySprintResults
+                score={score}
+                correctCount={correctCount}
+                missedCount={missedCount}
+                bestStreak={bestStreak}
+                categoryIds={categoryIds}
+                leaderboardKey={leaderboardKey}
+                onPlayAgain={onExit}
+              />
+            ) : (
+              <SprintResults
+                score={score}
+                previousBest={previousBest}
+                correctCount={correctCount}
+                missedCount={missedCount}
+                bestStreak={bestStreak}
+                categoryIds={categoryIds}
+                leaderboardKey={leaderboardKey}
+                onPlayAgain={onExit}
+              />
+            )}
           </Card>
         )}
     </div>
