@@ -86,6 +86,23 @@ export const integralsQuestionBanks: CategoryQuestionBank[] = [
         ans: "\\dfrac{1}{a}\\sec^{-1}\\left(\\dfrac{x}{a}\\right)+C",
       },
     ],
+    // Only 3 integrals in this family, so without these every question would
+    // show 3 options. Each decoy is a common slip (a misplaced 1/a factor) and
+    // is NOT an antiderivative of any prompt above.
+    decoys: [
+      {
+        key: "sin-1(x/a)/a",
+        ans: "\\dfrac{1}{a}\\sin^{-1}\\left(\\dfrac{x}{a}\\right)+C",
+      },
+      {
+        key: "tan-1(x/a)",
+        ans: "\\tan^{-1}\\left(\\dfrac{x}{a}\\right)+C",
+      },
+      {
+        key: "sec-1(x/a)",
+        ans: "\\sec^{-1}\\left(\\dfrac{x}{a}\\right)+C",
+      },
+    ],
   },
   {
     categoryId: "integrals-hyperbolic",

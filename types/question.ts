@@ -31,4 +31,13 @@ export interface QuestionItem {
 export interface CategoryQuestionBank {
   categoryId: string;
   items: QuestionItem[];
+  /**
+   * Optional wrong-but-plausible answers used only to fill out the options
+   * when a category has fewer than 4 distinct answers of its own. Never asked
+   * as questions and never shown in flashcards. Each decoy's `key` must differ
+   * from every item key in the bank, and its `ans` must not be a correct
+   * answer to any question in it (e.g. don't add an equivalent antiderivative
+   * that differs only by a constant).
+   */
+  decoys?: { key: string; ans: string }[];
 }

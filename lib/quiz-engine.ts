@@ -49,9 +49,9 @@ export function shuffle<T>(arr: T[]): T[] {
 
 /**
  * Builds a shuffled question queue restricted to the given category ids and,
- * when `kinds` is given, to those question kinds (DOMAIN / RANGE). Filtering
- * happens before distractors are drawn, so options always come from the same
- * facet as the question. Distractors are only ever drawn from the same
+ * when `kinds` is given, to those question kinds (DOMAIN / RANGE). The filter
+ * narrows which questions are asked, but distractors are drawn from the whole
+ * category (both facets). Distractors are only ever drawn from the same
  * category as the correct answer, and are deduplicated by `key` (e.g. ln x /
  * ln|x| share a key so they never both appear as options).
  */
@@ -67,7 +67,13 @@ export function buildQuestionQueue(
 
   for (const bank of banks) {
     const items = bank.items.filter((item) => matchesKinds(item, kinds));
-    const pool = dedupeByKey(items);
+    // Distractors come from the whole category, ignoring the DOMAIN / RANGE
+    // filter. Narrowing the pool to one facet left some categories with only
+    // 2-3 distinct answers (e.g. Log & Exp range: just R and (0, inf)), so
+    // questions showed fewer than 4 options. Dedup is by key, so a distractor
+    // can never equal the correct answer.
+    // `decoys` pad categories that have too few distinct answers of their own.
+    const pool = dedupeByKey([...bank.items, ...(bank.decoys ?? [])]);
 
     for (const item of items) {
       const others = pool.filter((p) => p.key !== item.key);
@@ -89,7 +95,7 @@ export function buildQuestionQueue(
   return shuffle(queue);
 }
 
-function dedupeByKey(items: QuestionItem[]): { key: string; ans: string }[] {
+function dedupeByKey(items: { key: string; ans: string }[]): { key: string; ans: string }[] {
   const seen = new Set<string>();
   const pool: { key: string; ans: string }[] = [];
   for (const item of items) {
