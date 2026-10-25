@@ -152,6 +152,23 @@ export function getPromptLabel(
   return subjectId ? SUBJECT_PROMPT_LABELS[subjectId] : undefined;
 }
 
+/**
+ * Plain-text wording for a question, with the default prefix filled in.
+ *
+ * `getPromptLabel` returns undefined for the subjects that keep their default
+ * wording (Derivatives, Integrals) because those prefixes are rendered as
+ * markup, not data. A summary row has to start with a word either way, so this
+ * resolves the default here — same rules as PromptLabel: an integral sign for
+ * integrals, "Dₓ of:" otherwise. Unknown category ids still get the default
+ * rather than a blank prefix.
+ */
+export function getPromptText(categoryId: string, kind?: QuestionKind): string {
+  return (
+    getPromptLabel(categoryId, kind) ??
+    (categoryId.startsWith("integrals") ? "∫ of:" : "Dₓ of:")
+  );
+}
+
 /** Every category id currently available, sorted — the canonical "full mix" set for leaderboard queries. */
 export function getAllCategoryIdsSorted(): string[] {
   return getAllCategories()

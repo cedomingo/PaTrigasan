@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { getAllSubjects, getAllCategories } from "@/data";
 import { getPlayerName, setPlayerName } from "@/lib/cookies";
@@ -13,6 +13,8 @@ import NameInput from "@/components/landing/NameInput";
 import ModeTabBar, { type ModeTab } from "@/components/landing/ModeTabBar";
 import SprintView from "@/components/sprint/SprintView";
 import FlashcardStack from "@/components/flashcards/FlashcardStack";
+import SummaryButton from "@/components/flashcards/SummaryButton";
+import SummaryOverlay from "@/components/flashcards/SummaryOverlay";
 
 /**
  * SprintPreview picks its first question with `Math.random()` inside a
@@ -64,10 +66,19 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<ModeTab>("sprint");
   const [kinds, setKinds] = useState<Set<QuestionKind>>(() => new Set(DEFAULT_KINDS));
   const kindsArray = useMemo(() => Array.from(kinds), [kinds]);
+  const selectedIdArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
   const [name, setName] = useState("");
   const [introComplete, setIntroComplete] = useState(false);
+  // The formula sheet sits on top of the practice card; it never touches the
+  // deck's order, flip state or position.
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [sprintHandoff, setSprintHandoff] = useState<SprintHandoff | null>(null);
   const [sprintLive, setSprintLive] = useState(false);
+  const gameRef = useRef<HTMLElement | null>(null);
+  // The block under the run (name field + leaderboard + bottom spacing). A live
+  // run shrinks its height — see the effect below — so there is nothing below
+  // the run to scroll into.
+  const belowRef = useRef<HTMLDivElement | null>(null);
 
   const handleIntroComplete = useCallback(() => setIntroComplete(true), []);
 
@@ -187,6 +198,39 @@ export default function Home() {
     setFlipped(false);
   }, [selectionKey]);
 
+  // A live run owns the viewport. The block under the game is already faded
+  // out; here it is also shrunk, and only ever shrunk — its height is set so
+  // the page's bottom always lands exactly on the current scroll position,
+  // which makes scrolling down impossible while never moving the page itself
+  // (there is no programmatic scrolling here). Scrolling up shrinks it further,
+  // and it is never grown back until the run is over.
+  useEffect(() => {
+    const below = belowRef.current;
+    if (!sprintLive || !below) return;
+
+    const shrink = () => {
+      const top = below.getBoundingClientRect().top + window.scrollY;
+      // Whatever sits after the block (in practice nothing) still needs room,
+      // so the usable height is the window bottom minus the block's top.
+      const tail =
+        document.documentElement.scrollHeight - (top + below.offsetHeight);
+      const wanted = Math.max(
+        0,
+        window.scrollY + window.innerHeight - top - tail
+      );
+      if (wanted < below.offsetHeight) below.style.height = `${wanted}px`;
+    };
+
+    shrink();
+    window.addEventListener("scroll", shrink, { passive: true });
+    window.addEventListener("resize", shrink);
+    return () => {
+      window.removeEventListener("scroll", shrink);
+      window.removeEventListener("resize", shrink);
+      below.style.height = "";
+    };
+  }, [sprintLive]);
+
   // Suppress arrow keys during sprint so they don't scroll or trigger anything
   useEffect(() => {
     if (activeTab !== "sprint") return;
@@ -208,7 +252,7 @@ export default function Home() {
 
   // Keyboard shortcuts for practice mode: A/D or arrows for prev/next, W/S or arrows for flip
   useEffect(() => {
-    if (activeTab !== "practice" || total === 0) return;
+    if (activeTab !== "practice" || total === 0 || summaryOpen) return;
 
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
@@ -242,7 +286,7 @@ export default function Home() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeTab, total]);
+  }, [activeTab, total, summaryOpen]);
 
   /** Shared classes to hide surrounding UI during a live sprint without
    *  removing it from the DOM (keeps layout stable). */
@@ -251,7 +295,8 @@ export default function Home() {
     : "opacity-100";
 
   return (
-    <main className="pb-24 animate-view-enter">
+    <>
+      <main className="animate-view-enter">
       {!introComplete && <IntroOverlay onComplete={handleIntroComplete} />}
 
       {/* Tab bar + dropdown overlay — hidden during live sprint but kept in layout */}
@@ -272,7 +317,7 @@ export default function Home() {
 
       {/* Sprint game — frozen preview first, live game after correct answer */}
       {activeTab === "sprint" && selectedIds.size > 0 && (
-        <section className="mx-auto mt-5 max-w-2xl px-6">
+        <section ref={gameRef} className="mx-auto mt-5 max-w-2xl px-6">
           {sprintHandoff === null ? (
             <SprintPreview
               key={selectionKey}
@@ -302,11 +347,14 @@ export default function Home() {
           <Card className="p-5 sm:p-10">
             {total > 0 ? (
               <>
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex items-center justify-between gap-3">
                   <SectionLabel tone="muted">Practice</SectionLabel>
-                  <span className="font-sans text-xs text-text-muted">
-                    Card {position + 1} of {total}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="whitespace-nowrap font-sans text-xs text-text-muted">
+                      Card {position + 1} of {total}
+                    </span>
+                    <SummaryButton onClick={() => setSummaryOpen(true)} />
+                  </div>
                 </div>
 
                 {/* FlashcardCard's own face height plus the 14px of headroom the
@@ -353,25 +401,50 @@ export default function Home() {
         </section>
       )}
 
-      {/* Name input — below the game, hidden during live sprint but kept in layout */}
-      <section
-        className={`mx-auto max-w-2xl px-6 transition-opacity duration-200 ${liveSprintHidden}`}
-        inert={sprintLive}
-      >
-        <div className="mt-6">
-          <NameInput name={name} onChange={handleNameChange} />
-        </div>
-      </section>
-
-      <div className="mt-5" />
-
-      {/* Leaderboard — hidden during live sprint but kept in layout */}
+      {/* Everything under the run. It is faded out for the whole live sprint,
+          and a live run also clips its height down to the window (see the
+          effect above) so nothing below the run can be scrolled into.
+          `contain: paint` is needed as well as the clip: without it the hidden
+          content still inflated the document's scroll height. */}
       <div
-        className={`transition-opacity duration-200 ${liveSprintHidden}`}
-        inert={sprintLive}
+        ref={belowRef}
+        className={sprintLive ? "overflow-hidden [contain:paint]" : ""}
       >
-        <LeaderboardSection />
+        {/* Name input — hidden during live sprint but kept in layout */}
+        <section
+          className={`mx-auto max-w-2xl px-6 transition-opacity duration-200 ${liveSprintHidden}`}
+          inert={sprintLive}
+        >
+          <div className="mt-6">
+            <NameInput name={name} onChange={handleNameChange} />
+          </div>
+        </section>
+
+        <div className="mt-5" />
+
+        {/* Leaderboard — hidden during live sprint but kept in layout */}
+        <div
+          className={`transition-opacity duration-200 ${liveSprintHidden}`}
+          inert={sprintLive}
+        >
+          <LeaderboardSection />
+        </div>
+
+        {/* Bottom breathing room, moved in here from <main>'s pb-24 so a live
+            run's height shrink clips it along with everything else. */}
+        <div className="h-24" />
       </div>
-    </main>
+      </main>
+
+      {/* Rendered outside <main>: its view-enter animation leaves a transform
+          on the element, which would otherwise become the containing block
+          for this fixed-position dialog. */}
+      {summaryOpen && (
+        <SummaryOverlay
+          categoryIds={selectedIdArray}
+          onClose={() => setSummaryOpen(false)}
+        />
+      )}
+    </>
   );
 }
