@@ -47,6 +47,11 @@ interface SprintPreviewProps {
   /** Question kinds the DOMAIN / RANGE toggles left on. */
   kinds: QuestionKind[];
   onHandoff: (handoff: SprintHandoff) => void;
+  /**
+   * The school-library site (/mathlib): shows the institution logo in the
+   * HUD, matching the live run it hands off to (see SprintHUD).
+   */
+  libraryMode?: boolean;
 }
 
 type PreviewPhase = "answering" | "revealed";
@@ -64,6 +69,7 @@ export default function SprintPreview({
   categoryIds,
   kinds,
   onHandoff,
+  libraryMode = false,
 }: SprintPreviewProps) {
   const categoryLabels = useMemo(
     () => new Map(getAllCategories().map((c) => [c.id, c.label])),
@@ -178,7 +184,12 @@ export default function SprintPreview({
   // (display math, text-4xl) would otherwise have to be scaled down into.
   return (
     <Card className="min-h-[36rem] p-5 sm:p-10">
-      <SprintHUD score={PREVIEW_SCORE} secondsLeft={PREVIEW_SECONDS} qPercent={100} />
+      <SprintHUD
+        score={PREVIEW_SCORE}
+        secondsLeft={PREVIEW_SECONDS}
+        qPercent={100}
+        showLogo={libraryMode}
+      />
 
       <div className="mt-8">
         <SectionLabel underline>

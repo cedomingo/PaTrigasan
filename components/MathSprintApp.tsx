@@ -12,6 +12,7 @@ import LeaderboardSection from "@/components/leaderboard/LeaderboardSection";
 import NameInput from "@/components/landing/NameInput";
 import ModeTabBar, { type ModeTab } from "@/components/landing/ModeTabBar";
 import SprintView from "@/components/sprint/SprintView";
+import FullscreenButton from "@/components/sprint/FullscreenButton";
 import FlashcardStack from "@/components/flashcards/FlashcardStack";
 import SummaryButton from "@/components/flashcards/SummaryButton";
 import SummaryOverlay from "@/components/flashcards/SummaryOverlay";
@@ -346,6 +347,7 @@ export default function MathSprintApp({
               categoryIds={Array.from(selectedIds)}
               kinds={kindsArray}
               onHandoff={handleSprintHandoff}
+              libraryMode={isLibrary}
             />
           ) : (
             <SprintView
@@ -461,6 +463,13 @@ export default function MathSprintApp({
         <div className="h-24" />
       </div>
       </main>
+
+      {/* Library kiosk: a quiet fullscreen toggle in the screen's lower-right
+          corner. Sprint tab only (the machine is set up to run the sprint),
+          and outside <main> like SummaryOverlay — the view-enter animation's
+          transform would otherwise become this fixed element's containing
+          block. */}
+      {isLibrary && activeTab === "sprint" && <FullscreenButton />}
 
       {/* Rendered outside <main>: its view-enter animation leaves a transform
           on the element, which would otherwise become the containing block

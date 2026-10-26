@@ -344,6 +344,7 @@ export default function SprintView({
             <SprintHUD
               score={score}
               secondsLeft={secondsLeft}
+              showLogo={libraryMode}
               timerKey={questionSeq}
               onExpire={handleQuestionExpire}
             />
