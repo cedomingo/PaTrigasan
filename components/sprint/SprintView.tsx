@@ -228,7 +228,7 @@ export default function SprintView({
       streakRef.current = 0;
       resetPitch();
       setMissedCount((m) => m + 1);
-      setStatusMessage(chosenKey ? "Not quite — keep going." : "Time's up — keep going.");
+      setStatusMessage(chosenKey ? "Not quite. Keep trying." : "Time's up. Keep going.");
 
       revealTimeoutRef.current = setTimeout(() => {
         if (totalTimeLeftRef.current > 0 && !endedRef.current) {
