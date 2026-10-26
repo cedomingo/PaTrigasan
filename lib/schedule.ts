@@ -18,6 +18,8 @@ import { UNIT_CIRCLE_SUBJECT_ID } from "@/data/questions/unit-circle";
  */
 
 export const SCHEDULE_TIME_ZONE = "Asia/Manila";
+/** Manila is UTC+8 all year. Keep in sync with SCHEDULE_TIME_ZONE. */
+const SCHEDULE_UTC_OFFSET_HOURS = 8;
 
 /**
  * The five things that can be scheduled — a subject id or FULL_MIX_KEY, i.e.
@@ -104,6 +106,19 @@ function scheduleForWeek(weekStartDay: number): string[] {
  */
 export function getWeeklySchedule(date: Date): string[] {
   return scheduleForWeek(weekStartOf(localDayNumber(date)));
+}
+
+/**
+ * The instant the current schedule week began: Monday 00:00 in Manila time.
+ * The "This Week" leaderboard uses this as its cutoff, so the board and the
+ * topic schedule always agree on where a week starts.
+ */
+export function getScheduleWeekStart(date: Date): Date {
+  const mondayDay = weekStartOf(localDayNumber(date));
+  // localDayNumber() counts Manila calendar days as if they were UTC days, so
+  // shift back by Manila's UTC offset to get the real instant of 00:00 there.
+  // (The Philippines has no daylight saving, so a fixed offset is exact.)
+  return new Date(mondayDay * MS_PER_DAY - SCHEDULE_UTC_OFFSET_HOURS * 3_600_000);
 }
 
 export interface TodaySchedule {

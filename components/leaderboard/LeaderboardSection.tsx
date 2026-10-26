@@ -2,11 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { SectionLabel, SegmentedControl } from "@/components/ui";
-import {
-  subscribeToLeaderboard,
-  filterByTimeframe,
-  libraryBoardKey,
-} from "@/lib/leaderboard";
+import { subscribeToLeaderboard, libraryBoardKey } from "@/lib/leaderboard";
+import { getScheduleWeekStart } from "@/lib/schedule";
 import { setAutosaveScorePreference, useAutosaveScore } from "@/lib/preferences";
 import type { ScoreEntry } from "@/types";
 import LeaderboardTable from "./LeaderboardTable";
@@ -44,6 +41,19 @@ export default function LeaderboardSection({
     LEADERBOARD_ORDER[(boardIndex + 1) % LEADERBOARD_ORDER.length]
   );
   const [timeframe, setTimeframe] = useState<Timeframe>("all-time");
+  // Monday 00:00 Manila — the same boundary the topic schedule uses. Re-read
+  // every minute so a board left open over the weekend rolls into the new week
+  // (setting an equal value is a no-op, so this only re-renders on Monday).
+  const [weekStartMs, setWeekStartMs] = useState(() =>
+    getScheduleWeekStart(new Date()).getTime()
+  );
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setWeekStartMs(getScheduleWeekStart(new Date()).getTime()),
+      60_000
+    );
+    return () => window.clearInterval(id);
+  }, []);
   // Where the fixed five-row window is parked: the top of the board (default)
   // or the player's own row. Lives here because the toggle sits in the header
   // while the scrolling happens inside the table.
@@ -69,13 +79,12 @@ export default function LeaderboardSection({
       (err) => {
         setError(err.message);
         setLoading(false);
-      }
+      },
+      { sinceMs: timeframe === "this-week" ? weekStartMs : undefined }
     );
 
     return unsubscribe;
-  }, [boardKey, libraryMode]);
-
-  const displayed = filterByTimeframe(entries, timeframe);
+  }, [boardKey, libraryMode, timeframe, weekStartMs]);
 
   return (
     <section className="mx-auto max-w-2xl px-6 pb-16">
@@ -132,7 +141,7 @@ export default function LeaderboardSection({
       </div>
 
       <LeaderboardTable
-        entries={displayed}
+        entries={entries}
         loading={loading}
         error={error}
         focus={focus}

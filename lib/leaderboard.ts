@@ -8,6 +8,7 @@ import {
   limit,
   onSnapshot,
   serverTimestamp,
+  Timestamp,
   getDocs,
   deleteDoc,
   type QuerySnapshot,
@@ -15,6 +16,8 @@ import {
 } from "firebase/firestore";
 import { db, SCORES_COLLECTION } from "./firebase";
 import type { NewScoreEntry, ScoreEntry } from "@/types";
+import { DEFAULT_PLAYER_NAME } from "./cookies";
+import { isNameAllowed } from "./name-filter";
 
 /** Category ids are stored sorted ascending, so the stored array is stable. */
 export function sortCategoryIds(categoryIds: string[]): string[] {
@@ -108,7 +111,11 @@ export function cleanLibraryName(name: string): string {
 export async function writeLibraryScore(entry: NewScoreEntry): Promise<void> {
   await addDoc(collection(db, SCORES_COLLECTION), {
     deviceId: entry.deviceId,
-    name: cleanLibraryName(entry.name),
+    // Last line of defence: the results screen already blocks these, but the
+    // write path must not trust it.
+    name: isNameAllowed(entry.name)
+      ? cleanLibraryName(entry.name)
+      : DEFAULT_PLAYER_NAME,
     score: entry.score,
     correctCount: entry.correctCount,
     missedCount: entry.missedCount,
@@ -174,14 +181,24 @@ function snapshotToEntries(snapshot: QuerySnapshot<DocumentData>): ScoreEntry[] 
   });
 }
 
+/** Most rows read for one week's board. A week of library runs is far below this. */
+const WEEK_WINDOW = 500;
+
 /**
  * Live-subscribes to one leaderboard (a subject id, or "full-mix" — see
- * getLeaderboardKey() in /data/subjects.ts). Fetches a generous window
- * (default 100) ordered by score descending so the "This Week" toggle can
- * filter client-side without a three-field index.
+ * getLeaderboardKey() in /data/subjects.ts).
  *
- * Needs a composite index on `scores`: leaderboardKey (Ascending) +
- * score (Descending). Firestore's error message links to create it.
+ * All-time: the top `windowSize` scores, ordered by score on the server.
+ *
+ * This week: pass `sinceMs` (see getScheduleWeekStart in /lib/schedule.ts).
+ * The week is cut on the server by `timestamp`, so a good run this week can
+ * never be crowded out by older, higher scores. Firestore can't also order by
+ * score once there is a range filter on `timestamp`, so the week's rows
+ * (capped at WEEK_WINDOW) are sorted here instead.
+ *
+ * Composite indexes (see firestore.indexes.json):
+ *   leaderboardKey ASC + score DESC       (all-time)
+ *   leaderboardKey ASC + timestamp ASC    (this week)
  *
  * Returns an unsubscribe function — call it on cleanup / when the board changes.
  */
@@ -189,30 +206,35 @@ export function subscribeToLeaderboard(
   leaderboardKey: string,
   onData: (entries: ScoreEntry[]) => void,
   onError: (error: Error) => void,
-  windowSize = 100
+  options: { sinceMs?: number; windowSize?: number } = {}
 ): () => void {
-  const q = query(
-    collection(db, SCORES_COLLECTION),
-    where("leaderboardKey", "==", leaderboardKey),
-    orderBy("score", "desc"),
-    limit(windowSize)
-  );
+  const { sinceMs, windowSize = 100 } = options;
+  const scores = collection(db, SCORES_COLLECTION);
+
+  const q =
+    sinceMs === undefined
+      ? query(
+          scores,
+          where("leaderboardKey", "==", leaderboardKey),
+          orderBy("score", "desc"),
+          limit(windowSize)
+        )
+      : query(
+          scores,
+          where("leaderboardKey", "==", leaderboardKey),
+          where("timestamp", ">=", Timestamp.fromMillis(sinceMs)),
+          limit(WEEK_WINDOW)
+        );
 
   return onSnapshot(
     q,
-    (snapshot) => onData(snapshotToEntries(snapshot)),
+    (snapshot) => {
+      const entries = snapshotToEntries(snapshot);
+      if (sinceMs !== undefined) {
+        entries.sort((a, b) => b.score - a.score);
+      }
+      onData(entries.slice(0, windowSize));
+    },
     (error) => onError(error)
   );
-}
-
-const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-/** Client-side filter for the "This Week" toggle, applied after the live query above. */
-export function filterByTimeframe(
-  entries: ScoreEntry[],
-  timeframe: "all-time" | "this-week"
-): ScoreEntry[] {
-  if (timeframe === "all-time") return entries;
-  const cutoff = Date.now() - ONE_WEEK_MS;
-  return entries.filter((e) => e.timestamp >= cutoff);
 }

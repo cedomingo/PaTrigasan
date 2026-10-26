@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button, Divider, SectionLabel } from "@/components/ui";
 import {
   LIBRARY_NAME_MAX_LENGTH,
@@ -8,7 +8,14 @@ import {
   writeLibraryScore,
 } from "@/lib/leaderboard";
 import { getDeviceId } from "@/lib/device";
+import { isNameAllowed } from "@/lib/name-filter";
 import { StatBox } from "./SprintResults";
+
+/**
+ * How long the results screen waits with no touch, key or mouse movement
+ * before handing the kiosk back to the start screen.
+ */
+const IDLE_RESET_MS = 30_000;
 
 /**
  * Results screen for the library site (/mathlib). Nothing is saved on its own:
@@ -49,7 +56,34 @@ export default function LibrarySprintResults({
 
   const eligible = leaderboardKey !== undefined;
   const cleanName = cleanLibraryName(name);
-  const canSave = cleanName.length > 0 && status !== "saving";
+  const nameAllowed = isNameAllowed(cleanName);
+  const canSave = cleanName.length > 0 && nameAllowed && status !== "saving";
+
+  // Kiosk: if the student walks away, return to the start screen so the next
+  // one never finds this one's results (or a half-typed name). This component
+  // owns the name field, so leaving unmounts it and the field starts empty
+  // again. No countdown is shown. Any input restarts the clock.
+  // (The callback lives in a ref: the parent passes a new function every
+  // render, and depending on it would restart the clock each time.)
+  const onIdleRef = useRef(onPlayAgain);
+  useEffect(() => {
+    onIdleRef.current = onPlayAgain;
+  }, [onPlayAgain]);
+
+  useEffect(() => {
+    const fire = () => onIdleRef.current();
+    let timer = window.setTimeout(fire, IDLE_RESET_MS);
+    const restart = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(fire, IDLE_RESET_MS);
+    };
+    const events = ["pointerdown", "pointermove", "keydown", "touchstart"] as const;
+    events.forEach((e) => window.addEventListener(e, restart, { passive: true }));
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, restart));
+    };
+  }, []);
 
   // Fade in after mount.
   useEffect(() => {
@@ -129,6 +163,11 @@ export default function LibrarySprintResults({
                 {status === "saving" ? "Saving…" : "Save"}
               </Button>
             </div>
+            {cleanName.length > 0 && !nameAllowed && (
+              <p className="mt-2 font-sans text-sm text-text-muted">
+                Please choose a different name.
+              </p>
+            )}
             {status === "error" && (
               <p className="mt-2 font-sans text-sm text-text-muted">
                 Couldn&apos;t save your score. Please try again.
