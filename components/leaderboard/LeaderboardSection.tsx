@@ -22,13 +22,22 @@ interface LeaderboardSectionProps {
    * being one person, which a shared library computer isn't.
    */
   libraryMode?: boolean;
+  /**
+   * The board to open on (a LEADERBOARD_ORDER key) — the library passes
+   * today's. Read once at mount; remount with a new `key` to change it. The
+   * sub-label still cycles through the other boards as usual.
+   */
+  initialBoardKey?: string;
 }
 
 export default function LeaderboardSection({
   libraryMode = false,
+  initialBoardKey,
 }: LeaderboardSectionProps) {
   // Index into LEADERBOARD_ORDER; clicking the sub-label advances it and loops.
-  const [boardIndex, setBoardIndex] = useState(0);
+  const [boardIndex, setBoardIndex] = useState(() =>
+    Math.max(0, LEADERBOARD_ORDER.indexOf(initialBoardKey ?? ""))
+  );
   const boardKey = LEADERBOARD_ORDER[boardIndex];
   const boardLabel = getLeaderboardLabel(boardKey);
   const nextLabel = getLeaderboardLabel(

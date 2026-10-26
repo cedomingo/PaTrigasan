@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test lib/summary.test.ts",
+    "test": "node --import tsx --test lib/summary.test.ts lib/schedule.test.ts",
     "seed:check": "tsx scripts/check-firestore.ts",
     "seed:scores": "tsx scripts/seed-sample-scores.ts"
   },

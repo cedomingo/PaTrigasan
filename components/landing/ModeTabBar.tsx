@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { QuestionKind, Subject } from "@/types";
 import CategoryCheckboxGroup from "@/components/category/CategoryCheckboxGroup";
 
@@ -15,6 +15,13 @@ interface ModeTabBarProps {
   /** Checked question kinds — rendered into the matching subject headings. */
   kinds: Set<QuestionKind>;
   onToggleKind: (kind: QuestionKind) => void;
+  /**
+   * Replaces the topic checkboxes inside the dropdown (the library shows its
+   * week strip here). Omit it to get the normal topic picker.
+   */
+  overlayContent?: ReactNode;
+  /** Heading for the dropdown when `overlayContent` is given. */
+  overlayTitle?: string;
 }
 
 const TABS: { id: ModeTab; label: string }[] = [
@@ -36,6 +43,8 @@ export default function ModeTabBar({
   onToggleCategory,
   kinds,
   onToggleKind,
+  overlayContent,
+  overlayTitle,
 }: ModeTabBarProps) {
   const [openDropdown, setOpenDropdown] = useState<ModeTab | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -140,20 +149,26 @@ export default function ModeTabBar({
           className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-white p-4 shadow-[var(--shadow-card)]"
         >
           <div className="mb-2 font-sans text-xs font-semibold uppercase tracking-[0.08em] text-navy">
-            Choose your topics
+            {overlayContent ? overlayTitle ?? "" : "Choose your topics"}
           </div>
 
-          <CategoryCheckboxGroup
-            subjects={subjects}
-            selectedIds={selectedIds}
-            onToggle={onToggleCategory}
-            kinds={kinds}
-            onToggleKind={onToggleKind}
-          />
-          {selectedIds.size === 0 && (
-            <p className="mt-3 font-sans text-xs text-text-muted">
-              Select at least one topic to continue.
-            </p>
+          {overlayContent ? (
+            overlayContent
+          ) : (
+            <>
+              <CategoryCheckboxGroup
+                subjects={subjects}
+                selectedIds={selectedIds}
+                onToggle={onToggleCategory}
+                kinds={kinds}
+                onToggleKind={onToggleKind}
+              />
+              {selectedIds.size === 0 && (
+                <p className="mt-3 font-sans text-xs text-text-muted">
+                  Select at least one topic to continue.
+                </p>
+              )}
+            </>
           )}
         </div>
       )}

@@ -6,11 +6,17 @@ import { getAllSubjects, getAllCategories } from "@/data";
 import { getPlayerName, setPlayerName } from "@/lib/cookies";
 import type { QuestionKind } from "@/types";
 import { getFlashcardItems, shuffle, type SprintHandoff } from "@/lib/quiz-engine";
+import {
+  getCategoryIdsForBoard,
+  getScheduleToday,
+  type TodaySchedule,
+} from "@/lib/schedule";
 import { Button, Card, Divider, SectionLabel } from "@/components/ui";
 import IntroOverlay from "@/components/landing/IntroOverlay";
 import LeaderboardSection from "@/components/leaderboard/LeaderboardSection";
 import NameInput from "@/components/landing/NameInput";
 import ModeTabBar, { type ModeTab } from "@/components/landing/ModeTabBar";
+import WeekStrip from "@/components/landing/WeekStrip";
 import SprintView from "@/components/sprint/SprintView";
 import FullscreenButton from "@/components/sprint/FullscreenButton";
 import FlashcardStack from "@/components/flashcards/FlashcardStack";
@@ -58,13 +64,21 @@ const DEFAULT_CATEGORY_ID = "derivatives-trig";
  */
 const DEFAULT_KINDS: QuestionKind[] = ["domain"];
 
+/** The library plays everything: both Domain and Range questions are on. */
+const LIBRARY_KINDS: QuestionKind[] = ["domain", "range"];
+
+/** How often the library re-checks the date, so a screen left on overnight rolls over. */
+const LIBRARY_DAY_CHECK_MS = 60_000;
+
 const VISIBLE_DEPTH = 3;
 
 /**
  * "default" is the public site at `/`. "library" is the school-library kiosk
  * at `/mathlib`: no name field on the page and no autosave — a finished run
  * asks for a name on the results screen instead (see LibrarySprintResults) —
- * and it keeps its own leaderboards, separate from the public ones.
+ * and it keeps its own leaderboards, separate from the public ones. Its topic
+ * isn't chosen by the student: each weekday has one (see lib/schedule.ts),
+ * everything in it is selected, and every run is saveable.
  */
 export type AppVariant = "default" | "library";
 
@@ -74,11 +88,18 @@ export default function MathSprintApp({
   variant?: AppVariant;
 }) {
   const isLibrary = variant === "library";
+  // The library starts empty: today's topic can only be read in the browser
+  // (the page itself is prerendered), and it's filled in right after mount.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    () => new Set([DEFAULT_CATEGORY_ID])
+    () => new Set(isLibrary ? [] : [DEFAULT_CATEGORY_ID])
   );
   const [activeTab, setActiveTab] = useState<ModeTab>("sprint");
-  const [kinds, setKinds] = useState<Set<QuestionKind>>(() => new Set(DEFAULT_KINDS));
+  const [kinds, setKinds] = useState<Set<QuestionKind>>(
+    () => new Set(isLibrary ? LIBRARY_KINDS : DEFAULT_KINDS)
+  );
+  // Library only: this week's schedule and today's place in it. Null until the
+  // first read after mount.
+  const [today, setToday] = useState<TodaySchedule | null>(null);
   const kindsArray = useMemo(() => Array.from(kinds), [kinds]);
   const selectedIdArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
   const [name, setName] = useState("");
@@ -95,6 +116,44 @@ export default function MathSprintApp({
   const belowRef = useRef<HTMLDivElement | null>(null);
 
   const handleIntroComplete = useCallback(() => setIntroComplete(true), []);
+
+  // Library: select today's topic — everything in it — and keep it current. The
+  // check repeats because the kiosk is left open all week; it only swaps the
+  // topic while nobody is mid-run, so it can never pull a run or the name
+  // prompt out from under a student.
+  const idleRef = useRef(true);
+  useEffect(() => {
+    idleRef.current = sprintHandoff === null;
+  }, [sprintHandoff]);
+
+  useEffect(() => {
+    if (!isLibrary) return;
+    let applied: string | null = null;
+
+    function apply() {
+      const next = getScheduleToday(new Date());
+      const key = `${next.schedule.join()}|${next.dayIndex}`;
+      if (key === applied) return;
+      applied = key;
+      setToday(next);
+      setSelectedIds(new Set(getCategoryIdsForBoard(next.topicKey)));
+      setKinds(new Set(LIBRARY_KINDS));
+    }
+
+    function check() {
+      if (idleRef.current) apply();
+    }
+
+    apply();
+    const timer = window.setInterval(check, LIBRARY_DAY_CHECK_MS);
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+    };
+  }, [isLibrary]);
 
   // The library never reads the saved name: the machine is shared, so the
   // last student's name must not carry over to the next.
@@ -335,8 +394,29 @@ export default function MathSprintApp({
           onToggleCategory={handleToggleCategory}
           kinds={kinds}
           onToggleKind={handleToggleKind}
+          // Library: the chevron opens this week's strip instead of the topic
+          // picker. It is display-only, so nothing in it can be changed.
+          overlayTitle={isLibrary ? "This week" : undefined}
+          overlayContent={
+            isLibrary ? (
+              <WeekStrip
+                schedule={today?.schedule ?? null}
+                todayIndex={today?.dayIndex ?? null}
+              />
+            ) : undefined
+          }
         />
       </section>
+
+      {/* Library, first frame only: today's topic isn't known yet. Same card
+          size as the game so nothing jumps when it appears. */}
+      {isLibrary && today === null && (
+        <section className="mx-auto mt-5 max-w-2xl px-6">
+          <Card className="min-h-[36rem] p-5 sm:p-10">
+            <p className="font-sans text-sm text-text-muted">Loading question…</p>
+          </Card>
+        </section>
+      )}
 
       {/* Sprint game — frozen preview first, live game after correct answer */}
       {activeTab === "sprint" && selectedIds.size > 0 && (
@@ -455,7 +535,16 @@ export default function MathSprintApp({
           className={`transition-opacity duration-200 ${liveSprintHidden}`}
           inert={sprintLive}
         >
-          <LeaderboardSection libraryMode={isLibrary} />
+          {/* Library: open on today's board. Rendered once today is known (so
+              it never subscribes to the wrong board first), and re-keyed when
+              the day rolls over so it moves to the new day's board. */}
+          {(!isLibrary || today !== null) && (
+            <LeaderboardSection
+              key={today?.topicKey ?? "default"}
+              libraryMode={isLibrary}
+              initialBoardKey={today?.topicKey}
+            />
+          )}
         </div>
 
         {/* Bottom breathing room, moved in here from <main>'s pb-24 so a live

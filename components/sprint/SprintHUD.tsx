@@ -42,9 +42,15 @@ export default function SprintHUD({
           logo, and with equal `1fr` sides it lands on the card's true center
           regardless of how much wider "Seconds left" is than "Score". With
           the logo absent the empty middle cell collapses to zero width, so
-          the two stats sit exactly where they always have. */}
+          the two stats sit exactly where they always have.
+
+          The two stats are pinned to the first and last columns explicitly:
+          without the logo there are only two children, and grid auto-placement
+          would drop the seconds cell into the middle `auto` column instead of
+          the right-hand `1fr` one — which pulled "Seconds left" in towards the
+          card's centre instead of sitting on its right edge. */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div>
+        <div className="col-start-1">
           <div className="font-serif text-2xl text-navy">{score}</div>
           <div className="font-sans text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">
             Score
@@ -63,7 +69,7 @@ export default function SprintHUD({
             className="h-7 w-auto sm:h-10"
           />
         )}
-        <div className="text-right">
+        <div className="col-start-3 text-right">
           <div className="font-serif text-2xl text-navy">{secondsLeft}</div>
           <div className="font-sans text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">
             Seconds left
