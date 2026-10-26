@@ -111,7 +111,7 @@ export default function LibrarySprintResults({
               htmlFor="library-player-name"
               className="mb-2 block font-sans text-xs font-semibold uppercase tracking-[0.08em] text-text-muted"
             >
-              Your namehttps://github.com/cedomingo/PaTrigasan
+              Your name
             </label>
             <div className="flex flex-wrap items-center justify-center gap-2">
               <input

@@ -251,7 +251,7 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
     categoryId: "domain-range-hyperbolic",
     items: [
       // Domain
-      { fn: "\\cosh x", kind: DOMAIN, key: "[0,inf)", ans: "[0, \\infty)" },
+      { fn: "\\cosh x", kind: DOMAIN, key: "(-inf,inf)", ans: "\\mathbb{R}" },
       {
         fn: "\\sinh x",
         kind: DOMAIN,
@@ -267,8 +267,8 @@ export const domainRangeQuestionBanks: CategoryQuestionBank[] = [
       {
         fn: "\\operatorname{sech} x",
         kind: DOMAIN,
-        key: "[0,inf)",
-        ans: "[0, \\infty)",
+        key: "(-inf,inf)",
+        ans: "\\mathbb{R}",
       },
       {
         fn: "\\operatorname{csch} x",
